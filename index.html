@@ -34,7 +34,6 @@
     const SUPABASE_URL = 'https://rabujuzuycdkxalyelcd.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_6xnlWswPyQ_BbzKySdHGAw_waSsMuf0';
     
-    // बदल: इथे आपण 'supabaseClient' हे नवीन नाव वापरले आहे जेणेकरून एरर येणार नाही
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let isLogin = true;
@@ -49,8 +48,6 @@
     }
 
     async function handleAuth() {
-        console.log("बटन क्लिक झाले!"); 
-        
         const name = document.getElementById('name').value;
         const mobile = document.getElementById('mobile').value;
         const password = document.getElementById('password').value;
@@ -78,7 +75,6 @@
             const { data, error } = await supabaseClient.auth.signUp({ email: email, password: password });
             
             if (error) {
-                console.error("Registration Error:", error);
                 messageBox.style.color = "red";
                 messageBox.innerText = "चूक: " + error.message;
             } else {
@@ -98,16 +94,27 @@
             const { data, error } = await supabaseClient.auth.signInWithPassword({ email: email, password: password });
 
             if (error) {
-                console.error("Login Error:", error);
                 messageBox.style.color = "red";
                 messageBox.innerText = "मोबाईल नंबर किंवा पासवर्ड चुकीचा आहे.";
             } else {
                 const userId = data.user.id;
-                const { data: profileData, error: profileError } = await supabaseClient.from('profiles').select('is_active').eq('id', userId).single();
+                
+                // बदल: इथे आपण 'role' पण डेटाबेसमधून घेत आहोत
+                const { data: profileData, error: profileError } = await supabaseClient.from('profiles').select('is_active, role').eq('id', userId).single();
 
                 if (profileData && profileData.is_active) {
                     messageBox.style.color = "green";
                     messageBox.innerText = "लॉगिन यशस्वी! डॅशबोर्ड लोड होत आहे...";
+                    
+                    // बदल: रोल नुसार १.५ सेकंदानंतर आपोआप पेज बदलण्याची कमांड
+                    setTimeout(() => {
+                        if (profileData.role === 'admin') {
+                            window.location.href = "admin_dashboard.html"; // ॲडमिनसाठी
+                        } else {
+                            window.location.href = "student_dashboard.html"; // विद्यार्थ्यासाठी
+                        }
+                    }, 1500);
+
                 } else {
                     messageBox.style.color = "red";
                     messageBox.innerText = "तुमचे अकाउंट अजून ॲडमिनने ॲक्टिव्हेट केलेले नाही.";
