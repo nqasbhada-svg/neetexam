@@ -36,9 +36,8 @@
         const SUPABASE_KEY = 'sb_publishable_6xnlWswPyQ_BbzKySdHGAw_waSsMuf0';
     const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    let isLogin = true;
+let isLogin = true;
 
-    // फॉर्म बदलण्यासाठी (Login <-> Register)
     function toggleForm() {
         isLogin = !isLogin;
         document.getElementById('form-title').innerText = isLogin ? "विद्यार्थी लॉगिन" : "नवीन रजिस्ट्रेशन";
@@ -48,8 +47,9 @@
         document.getElementById('message').innerText = "";
     }
 
-    // मुख्य फंक्शन (लॉगिन किंवा रजिस्टर)
     async function handleAuth() {
+        console.log("लॉगिन/रजिस्टर बटन क्लिक झाले!"); // हे कन्सोलमध्ये दिसले पाहिजे
+        
         const name = document.getElementById('name').value;
         const mobile = document.getElementById('mobile').value;
         const password = document.getElementById('password').value;
@@ -57,58 +57,62 @@
 
         if (!mobile || !password) {
             messageBox.innerText = "कृपया मोबाईल नंबर आणि पासवर्ड टाका.";
+            console.log("नंबर किंवा पासवर्ड रिकामा आहे.");
             return;
         }
 
-        // मोबाईल नंबरवरून डमी ईमेल तयार करणे (Supabase Auth साठी)
         const email = mobile + "@neet.com";
+        console.log("तयार झालेला ईमेल: ", email);
 
         if (!isLogin) {
-            // --- रजिस्ट्रेशन (Sign Up) ---
+            // रजिस्ट्रेशन
             if (!name) { messageBox.innerText = "कृपया नाव टाका."; return; }
-            
             messageBox.style.color = "blue";
             messageBox.innerText = "रजिस्ट्रेशन होत आहे, कृपया थांबा...";
 
             const { data, error } = await supabase.auth.signUp({ email: email, password: password });
-
+            
             if (error) {
+                console.error("Supabase Registration Error:", error);
                 messageBox.style.color = "red";
                 messageBox.innerText = "चूक: " + error.message;
             } else {
-                // प्रोफाईल टेबलमध्ये माहिती सेव्ह करणे
+                console.log("Registration Success Data:", data);
                 const userId = data.user.id;
                 await supabase.from('profiles').insert([
                     { id: userId, name: name, mobile_number: mobile, role: 'student', is_active: false }
                 ]);
                 messageBox.style.color = "green";
                 messageBox.innerText = "रजिस्ट्रेशन यशस्वी! कृपया ॲडमिनच्या ॲप्रूव्हलची वाट पाहा.";
-                setTimeout(toggleForm, 3000); // 3 सेकंदात लॉगिन फॉर्मवर पाठवा
+                setTimeout(toggleForm, 3000);
             }
         } else {
-            // --- लॉगिन (Sign In) ---
+            // लॉगिन
             messageBox.style.color = "blue";
             messageBox.innerText = "लॉगिन होत आहे...";
 
             const { data, error } = await supabase.auth.signInWithPassword({ email: email, password: password });
 
             if (error) {
+                console.error("Supabase Login Error:", error);
                 messageBox.style.color = "red";
                 messageBox.innerText = "मोबाईल नंबर किंवा पासवर्ड चुकीचा आहे.";
             } else {
-                // ॲडमिनने ॲक्टिव्हेट केले आहे का ते तपासणे
+                console.log("Login Success Data:", data);
                 const userId = data.user.id;
-                const { data: profileData } = await supabase.from('profiles').select('is_active').eq('id', userId).single();
+                const { data: profileData, error: profileError } = await supabase.from('profiles').select('is_active').eq('id', userId).single();
+
+                if (profileError) {
+                    console.error("Profile Fetch Error:", profileError);
+                }
 
                 if (profileData && profileData.is_active) {
                     messageBox.style.color = "green";
                     messageBox.innerText = "लॉगिन यशस्वी! डॅशबोर्ड लोड होत आहे...";
-                    // इथे आपण विद्यार्थ्याला डॅशबोर्ड पेजवर पाठवू
-                    // window.location.href = "student_dashboard.html";
                 } else {
                     messageBox.style.color = "red";
                     messageBox.innerText = "तुमचे अकाउंट अजून ॲडमिनने ॲक्टिव्हेट केलेले नाही.";
-                    await supabase.auth.signOut(); // पुन्हा लॉगआउट करा
+                    await supabase.auth.signOut();
                 }
             }
         }
