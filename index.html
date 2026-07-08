@@ -31,12 +31,14 @@
 </div>
 
 <script>
-    // १. तुमचे Supabase URL आणि Key इथे टाका
-     const SUPABASE_URL = 'https://rabujuzuycdkxalyelcd.supabase.co/rest/v1/';
-        const SUPABASE_KEY = 'sb_publishable_6xnlWswPyQ_BbzKySdHGAw_waSsMuf0';
+    // १. दुरुस्त केलेली URL (फक्त .co पर्यंत)
+    const SUPABASE_URL = 'https://rabujuzuycdkxalyelcd.supabase.co';
+    // तुमची Key (ही योग्य असल्याची खात्री करा, शक्यतो 'eyJ' ने सुरु होते)
+    const SUPABASE_KEY = 'sb_publishable_6xnlWswPyQ_BbzKySdHGAw_waSsMuf0';
+    
     const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let isLogin = true;
+    let isLogin = true;
 
     function toggleForm() {
         isLogin = !isLogin;
@@ -48,7 +50,7 @@ let isLogin = true;
     }
 
     async function handleAuth() {
-        console.log("लॉगिन/रजिस्टर बटन क्लिक झाले!"); // हे कन्सोलमध्ये दिसले पाहिजे
+        console.log("लॉगिन/रजिस्टर बटन क्लिक झाले!"); 
         
         const name = document.getElementById('name').value;
         const mobile = document.getElementById('mobile').value;
@@ -56,17 +58,21 @@ let isLogin = true;
         const messageBox = document.getElementById('message');
 
         if (!mobile || !password) {
+            messageBox.style.color = "red";
             messageBox.innerText = "कृपया मोबाईल नंबर आणि पासवर्ड टाका.";
-            console.log("नंबर किंवा पासवर्ड रिकामा आहे.");
             return;
         }
 
         const email = mobile + "@neet.com";
-        console.log("तयार झालेला ईमेल: ", email);
 
         if (!isLogin) {
             // रजिस्ट्रेशन
-            if (!name) { messageBox.innerText = "कृपया नाव टाका."; return; }
+            if (!name) { 
+                messageBox.style.color = "red";
+                messageBox.innerText = "कृपया नाव टाका."; 
+                return; 
+            }
+            
             messageBox.style.color = "blue";
             messageBox.innerText = "रजिस्ट्रेशन होत आहे, कृपया थांबा...";
 
@@ -77,7 +83,6 @@ let isLogin = true;
                 messageBox.style.color = "red";
                 messageBox.innerText = "चूक: " + error.message;
             } else {
-                console.log("Registration Success Data:", data);
                 const userId = data.user.id;
                 await supabase.from('profiles').insert([
                     { id: userId, name: name, mobile_number: mobile, role: 'student', is_active: false }
@@ -98,7 +103,6 @@ let isLogin = true;
                 messageBox.style.color = "red";
                 messageBox.innerText = "मोबाईल नंबर किंवा पासवर्ड चुकीचा आहे.";
             } else {
-                console.log("Login Success Data:", data);
                 const userId = data.user.id;
                 const { data: profileData, error: profileError } = await supabase.from('profiles').select('is_active').eq('id', userId).single();
 
@@ -117,6 +121,5 @@ let isLogin = true;
             }
         }
     }
-</script>
-</body>
+</script></body>
 </html>
