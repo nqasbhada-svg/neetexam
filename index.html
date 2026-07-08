@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEET Exam - Student Login</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 350px; text-align: center; }
+        input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; }
+        button { width: 100%; padding: 10px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 10px; }
+        button:hover { background-color: #218838; }
+        .toggle-link { color: #007bff; cursor: pointer; font-size: 14px; margin-top: 15px; display: block; }
+        #message { margin-top: 15px; font-size: 14px; color: red; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="login-box">
+    <h2 id="form-title">विद्यार्थी लॉगिन</h2>
+    
+    <input type="text" id="name" placeholder="तुमचे पूर्ण नाव" style="display: none;">
+    <input type="number" id="mobile" placeholder="मोबाईल नंबर (10 अंकी)" required>
+    <input type="password" id="password" placeholder="पासवर्ड" required>
+    
+    <button onclick="handleAuth()" id="submit-btn">लॉगिन करा</button>
+    <div id="message"></div>
+    
+    <span class="toggle-link" onclick="toggleForm()">नवीन विद्यार्थी आहात? इथे रजिस्ट्रेशन करा.</span>
+</div>
+
+<script>
+    // १. तुमचे Supabase URL आणि Key इथे टाका
+     const SUPABASE_URL = 'https://rabujuzuycdkxalyelcd.supabase.co/rest/v1/';
+        const SUPABASE_KEY = 'sb_publishable_6xnlWswPyQ_BbzKySdHGAw_waSsMuf0';
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let isLogin = true;
+
+    // फॉर्म बदलण्यासाठी (Login <-> Register)
+    function toggleForm() {
+        isLogin = !isLogin;
+        document.getElementById('form-title').innerText = isLogin ? "विद्यार्थी लॉगिन" : "नवीन रजिस्ट्रेशन";
+        document.getElementById('submit-btn').innerText = isLogin ? "लॉगिन करा" : "रजिस्टर करा";
+        document.getElementById('name').style.display = isLogin ? "none" : "block";
+        document.querySelector('.toggle-link').innerText = isLogin ? "नवीन विद्यार्थी आहात? इथे रजिस्ट्रेशन करा." : "आधीच अकाउंट आहे? लॉगिन करा.";
+        document.getElementById('message').innerText = "";
+    }
+
+    // मुख्य फंक्शन (लॉगिन किंवा रजिस्टर)
+    async function handleAuth() {
+        const name = document.getElementById('name').value;
+        const mobile = document.getElementById('mobile').value;
+        const password = document.getElementById('password').value;
+        const messageBox = document.getElementById('message');
+
+        if (!mobile || !password) {
+            messageBox.innerText = "कृपया मोबाईल नंबर आणि पासवर्ड टाका.";
+            return;
+        }
+
+        // मोबाईल नंबरवरून डमी ईमेल तयार करणे (Supabase Auth साठी)
+        const email = mobile + "@neet.com";
+
+        if (!isLogin) {
+            // --- रजिस्ट्रेशन (Sign Up) ---
+            if (!name) { messageBox.innerText = "कृपया नाव टाका."; return; }
+            
+            messageBox.style.color = "blue";
+            messageBox.innerText = "रजिस्ट्रेशन होत आहे, कृपया थांबा...";
+
+            const { data, error } = await supabase.auth.signUp({ email: email, password: password });
+
+            if (error) {
+                messageBox.style.color = "red";
+                messageBox.innerText = "चूक: " + error.message;
+            } else {
+                // प्रोफाईल टेबलमध्ये माहिती सेव्ह करणे
+                const userId = data.user.id;
+                await supabase.from('profiles').insert([
+                    { id: userId, name: name, mobile_number: mobile, role: 'student', is_active: false }
+                ]);
+                messageBox.style.color = "green";
+                messageBox.innerText = "रजिस्ट्रेशन यशस्वी! कृपया ॲडमिनच्या ॲप्रूव्हलची वाट पाहा.";
+                setTimeout(toggleForm, 3000); // 3 सेकंदात लॉगिन फॉर्मवर पाठवा
+            }
+        } else {
+            // --- लॉगिन (Sign In) ---
+            messageBox.style.color = "blue";
+            messageBox.innerText = "लॉगिन होत आहे...";
+
+            const { data, error } = await supabase.auth.signInWithPassword({ email: email, password: password });
+
+            if (error) {
+                messageBox.style.color = "red";
+                messageBox.innerText = "मोबाईल नंबर किंवा पासवर्ड चुकीचा आहे.";
+            } else {
+                // ॲडमिनने ॲक्टिव्हेट केले आहे का ते तपासणे
+                const userId = data.user.id;
+                const { data: profileData } = await supabase.from('profiles').select('is_active').eq('id', userId).single();
+
+                if (profileData && profileData.is_active) {
+                    messageBox.style.color = "green";
+                    messageBox.innerText = "लॉगिन यशस्वी! डॅशबोर्ड लोड होत आहे...";
+                    // इथे आपण विद्यार्थ्याला डॅशबोर्ड पेजवर पाठवू
+                    // window.location.href = "student_dashboard.html";
+                } else {
+                    messageBox.style.color = "red";
+                    messageBox.innerText = "तुमचे अकाउंट अजून ॲडमिनने ॲक्टिव्हेट केलेले नाही.";
+                    await supabase.auth.signOut(); // पुन्हा लॉगआउट करा
+                }
+            }
+        }
+    }
+</script>
+</body>
+</html>
