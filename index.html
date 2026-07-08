@@ -12,7 +12,7 @@
         button { width: 100%; padding: 10px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 10px; }
         button:hover { background-color: #218838; }
         .toggle-link { color: #007bff; cursor: pointer; font-size: 14px; margin-top: 15px; display: block; }
-        #message { margin-top: 15px; font-size: 14px; color: red; }
+        #message { margin-top: 15px; font-size: 14px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -24,16 +24,15 @@
     <input type="number" id="mobile" placeholder="मोबाईल नंबर (10 अंकी)" required>
     <input type="password" id="password" placeholder="पासवर्ड" required>
     
-    <button onclick="handleAuth()" id="submit-btn">लॉगिन करा</button>
+    <button type="button" onclick="handleAuth()" id="submit-btn">लॉगिन करा</button>
     <div id="message"></div>
     
     <span class="toggle-link" onclick="toggleForm()">नवीन विद्यार्थी आहात? इथे रजिस्ट्रेशन करा.</span>
 </div>
 
 <script>
-    // १. दुरुस्त केलेली URL (फक्त .co पर्यंत)
+    // URL आणि Key इथे अचूक टाकली आहे (दोनदा आलेली नाही)
     const SUPABASE_URL = 'https://rabujuzuycdkxalyelcd.supabase.co';
-    // तुमची Key (ही योग्य असल्याची खात्री करा, शक्यतो 'eyJ' ने सुरु होते)
     const SUPABASE_KEY = 'sb_publishable_6xnlWswPyQ_BbzKySdHGAw_waSsMuf0';
     
     const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -121,5 +120,6 @@
             }
         }
     }
-</script></body>
+</script>
+</body>
 </html>
