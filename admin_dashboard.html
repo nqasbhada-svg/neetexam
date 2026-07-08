@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - NEET Exam</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; background: #343a40; color: white; padding: 10px 20px; border-radius: 5px; }
+        .logout-btn { background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
+        .container { display: flex; gap: 20px; margin-top: 20px; }
+        .box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); flex: 1; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .approve-btn { background: #28a745; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 3px; }
+        input, select { width: 90%; padding: 8px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; }
+        .submit-btn { background: #007bff; color: white; border: none; padding: 10px; width: 100%; cursor: pointer; border-radius: 4px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>ॲडमिन डॅशबोर्ड</h2>
+        <button class="logout-btn" onclick="logout()">लॉगआउट करा</button>
+    </div>
+
+    <div class="container">
+        <div class="box">
+            <h3>प्रलंबित विद्यार्थी (Pending Approvals)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>नाव</th>
+                        <th>मोबाईल नंबर</th>
+                        <th>कृती (Action)</th>
+                    </tr>
+                </thead>
+                <tbody id="students-list">
+                    <tr><td colspan="3">लोड होत आहे...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="box">
+            <h3>नवीन परीक्षा तयार करा</h3>
+            <input type="text" id="exam_title" placeholder="परीक्षेचे नाव (उदा. Physics Mock Test 1)">
+            
+            <select id="exam_type">
+                <option value="Subject">विषयवार (Subject-wise)</option>
+                <option value="Chapter">चाप्टर-निहाय (Chapter-wise)</option>
+                <option value="Monthly">मासिक (Monthly)</option>
+                <option value="Yearly">वार्षिक (Yearly)</option>
+            </select>
+            
+            <input type="number" id="total_questions" placeholder="एकूण प्रश्न संख्या">
+            <input type="datetime-local" id="valid_until" title="परीक्षा कधीपर्यंत ऍक्टिव्ह राहील">
+            
+            <button class="submit-btn" onclick="createExam()">परीक्षा जनरेट करा</button>
+            <p id="exam-msg" style="margin-top: 10px; font-weight: bold;"></p>
+        </div>
+    </div>
+
+<script>
+    const SUPABASE_URL = 'https://rabujuzuycdkxalyelcd.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_6xnlWswPyQ_BbzKySdHGAw_waSsMuf0';
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // पेज लोड झाल्यावर ॲडमिन आहे की नाही ते तपासणे
+    async function checkAdmin() {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) {
+            window.location.href = "index.html"; // लॉगिन नसेल तर परत पाठवा
+            return;
+        }
+
+        const userId = session.user.id;
+        const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', userId).single();
+
+        if (!profile || profile.role !== 'admin') {
+            alert("तुम्हाला हे पेज पाहण्याचा अधिकार नाही!");
+            window.location.href = "index.html";
+        } else {
+            fetchPendingStudents(); // ॲडमिन असेल तर विद्यार्थ्यांची यादी आणा
+        }
+    }
+
+    // प्रलंबित विद्यार्थ्यांची यादी आणणे
+    async function fetchPendingStudents() {
+        const { data, error } = await supabaseClient.from('profiles').select('*').eq('role', 'student').eq('is_active', false);
+        const tbody = document.getElementById('students-list');
+        tbody.innerHTML = "";
+
+        if (error || data.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='3'>कोणतेही नवीन विद्यार्थी प्रलंबित नाहीत.</td></tr>";
+            return;
+        }
+
+        data.forEach(student => {
+            let row = `<tr>
+                <td>${student.name}</td>
+                <td>${student.mobile_number}</td>
+                <td><button class='approve-btn' onclick="approveStudent('${student.id}')">Activate</button></td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+    }
+
+    // विद्यार्थ्याला ॲक्टिव्हेट करणे
+    async function approveStudent(studentId) {
+        const { error } = await supabaseClient.from('profiles').update({ is_active: true }).eq('id', studentId);
+        if (error) {
+            alert("काहीतरी चूक झाली: " + error.message);
+        } else {
+            alert("विद्यार्थी यशस्वीरीत्या ॲक्टिव्हेट झाला!");
+            fetchPendingStudents(); // यादी पुन्हा रिफ्रेश करा
+        }
+    }
+
+    // परीक्षा तयार करणे
+    async function createExam() {
+        const title = document.getElementById('exam_title').value;
+        const type = document.getElementById('exam_type').value;
+        const questions = document.getElementById('total_questions').value;
+        const validUntil = document.getElementById('valid_until').value;
+        const msgBox = document.getElementById('exam-msg');
+
+        if (!title || !questions || !validUntil) {
+            msgBox.style.color = "red";
+            msgBox.innerText = "कृपया सर्व माहिती भरा.";
+            return;
+        }
+
+        msgBox.style.color = "blue";
+        msgBox.innerText = "परीक्षा सेव्ह होत आहे...";
+
+        const { error } = await supabaseClient.from('exams').insert([
+            { exam_title: title, exam_type: type, total_questions: parseInt(questions), valid_until: validUntil }
+        ]);
+
+        if (error) {
+            msgBox.style.color = "red";
+            msgBox.innerText = "चूक: " + error.message;
+        } else {
+            msgBox.style.color = "green";
+            msgBox.innerText = "परीक्षा यशस्वीरीत्या जनरेट झाली!";
+            // फॉर्म रिकामा करणे
+            document.getElementById('exam_title').value = "";
+            document.getElementById('total_questions').value = "";
+            document.getElementById('valid_until').value = "";
+        }
+    }
+
+    // लॉगआउट करणे
+    async function logout() {
+        await supabaseClient.auth.signOut();
+        window.location.href = "index.html";
+    }
+
+    // स्क्रिप्ट सुरू करणे
+    checkAdmin();
+</script>
+</body>
+</html>
