@@ -15,8 +15,8 @@
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
         .approve-btn { background: #28a745; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 3px; }
-        input, select { width: 90%; padding: 8px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; }
-        select[multiple] { height: 100px; } /* मल्टी-सिलेक्ट बॉक्सची उंची */
+        input, select { width: 90%; padding: 8px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        select[multiple] { height: 100px; } 
         .submit-btn { background: #007bff; color: white; border: none; padding: 10px; width: 100%; cursor: pointer; border-radius: 4px; margin-top: 10px; }
         .hidden { display: none; }
         .small-text { font-size: 12px; color: gray; margin: 0; }
@@ -31,7 +31,7 @@
 
     <div class="container">
         <div class="box">
-            <h3>प्रलंबित विद्यार्थी (Pending)</h3>
+            <h3>प्रलंबित विद्यार्थी (Pending Approvals)</h3>
             <table>
                 <thead>
                     <tr>
@@ -82,6 +82,10 @@
     const SUPABASE_KEY = 'sb_publishable_6xnlWswPyQ_BbzKySdHGAw_waSsMuf0';
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    // तुमच्या Supabase मधील मुख्य प्रश्नांच्या टेबलचे नाव
+    const TABLE_NAME = 'NEET QUESTION BANK';
+
+    // १. पेज लोड झाल्यावर ॲडमिन आहे की नाही ते तपासणे
     async function checkAdmin() {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session) { window.location.href = "index.html"; return; }
@@ -98,6 +102,7 @@
         }
     }
 
+    // २. प्रलंबित विद्यार्थ्यांची यादी आणणे
     async function fetchPendingStudents() {
         const { data, error } = await supabaseClient.from('profiles').select('*').eq('role', 'student').eq('is_active', false);
         const tbody = document.getElementById('students-list');
@@ -118,17 +123,18 @@
         });
     }
 
+    // ३. विद्यार्थ्याला ॲक्टिव्हेट करणे
     async function approveStudent(studentId) {
         const { error } = await supabaseClient.from('profiles').update({ is_active: true }).eq('id', studentId);
         if (!error) {
             alert("विद्यार्थी यशस्वीरीत्या ॲक्टिव्हेट झाला!");
             fetchPendingStudents();
+        } else {
+            alert("चूक: " + error.message);
         }
     }
 
-    // -- नवीन डायनॅमिक फीचर्स --
-
-    // परीक्षेच्या प्रकारानुसार बॉक्सेस दाखवणे/लपवणे
+    // ४. परीक्षेच्या प्रकारानुसार बॉक्सेस दाखवणे/लपवणे
     function toggleFilters() {
         const type = document.getElementById('exam_type').value;
         const subjectBox = document.getElementById('subject_box');
@@ -146,17 +152,27 @@
         }
     }
 
-    // डेटाबेसमधून युनिक विषय (Subjects) आणणे
+    // ५. डेटाबेसमधून युनिक विषय (Subjects) आणणे
     async function fetchSubjects() {
-        const { data, error } = await supabaseClient.from('questions').select('subject');
-        if (data && !error) {
-            const uniqueSubjects = [...new Set(data.map(q => q.subject).filter(Boolean))];
+        const { data, error } = await supabaseClient.from(TABLE_NAME).select('Subject');
+        
+        if (error) {
+            console.error("Error fetching subjects:", error);
+            // जर 'Subject' ऐवजी 'subject' असेल तर Fallback
+            const fallback = await supabaseClient.from(TABLE_NAME).select('subject');
+            if (fallback.data) processSubjects(fallback.data, 'subject');
+        } else if (data) {
+            processSubjects(data, 'Subject');
+        }
+
+        function processSubjects(subjectData, columnName) {
+            const uniqueSubjects = [...new Set(subjectData.map(q => q[columnName]).filter(Boolean))];
             const subjSelect = document.getElementById('exam_subjects');
             subjSelect.innerHTML = uniqueSubjects.map(s => `<option value="${s}">${s}</option>`).join('');
         }
     }
 
-    // निवडलेल्या विषयांनुसार चाप्टर्स (Chapters) आणणे
+    // ६. निवडलेल्या विषयांनुसार चाप्टर्स (Chapters) आणणे
     async function fetchChapters() {
         const selectedSubjects = Array.from(document.getElementById('exam_subjects').selectedOptions).map(opt => opt.value);
         const chapSelect = document.getElementById('exam_chapters');
@@ -166,14 +182,23 @@
             return;
         }
 
-        const { data, error } = await supabaseClient.from('questions').select('chapter').in('subject', selectedSubjects);
-        if (data && !error) {
-            const uniqueChapters = [...new Set(data.map(q => q.chapter).filter(Boolean))];
+        const { data, error } = await supabaseClient.from(TABLE_NAME).select('Chapter').in('Subject', selectedSubjects);
+            
+        if (error) {
+            console.error("Error fetching chapters:", error);
+            const fallback = await supabaseClient.from(TABLE_NAME).select('chapter').in('subject', selectedSubjects);
+            if (fallback.data) processChapters(fallback.data, 'chapter');
+        } else if (data) {
+            processChapters(data, 'Chapter');
+        }
+
+        function processChapters(chapterData, columnName) {
+            const uniqueChapters = [...new Set(chapterData.map(q => q[columnName]).filter(Boolean))];
             chapSelect.innerHTML = uniqueChapters.map(c => `<option value="${c}">${c}</option>`).join('');
         }
     }
 
-    // परीक्षा तयार करताना डेटा सेव्ह करणे
+    // ७. परीक्षा तयार करताना डेटा सेव्ह करणे
     async function createExam() {
         const title = document.getElementById('exam_title').value;
         const type = document.getElementById('exam_type').value;
@@ -214,17 +239,18 @@
             document.getElementById('exam_title').value = "";
             document.getElementById('total_questions').value = "";
             document.getElementById('valid_until').value = "";
-            // निवडलेले पर्याय रीसेट करणे
             document.getElementById('exam_subjects').selectedIndex = -1;
             document.getElementById('exam_chapters').innerHTML = ""; 
         }
     }
 
+    // ८. लॉगआउट करणे
     async function logout() {
         await supabaseClient.auth.signOut();
         window.location.href = "index.html";
     }
 
+    // स्क्रिप्ट सुरू करणे
     checkAdmin();
 </script>
 </body>
