@@ -261,12 +261,41 @@
 
     async function fetchAvailableExams() {
         const now = new Date().toISOString();
-        const { data, error } = await supabaseClient.from('exams').select('*').gte('valid_until', now).order('id', { ascending: false });
+        
+        // १. आधी सर्व उपलब्ध परीक्षा आणणे (ज्यांची वेळ संपलेली नाही)
+        const { data: allExams, error } = await supabaseClient
+            .from('exams')
+            .select('*')
+            .gte('valid_until', now)
+            .order('id', { ascending: false });
         
         const tbody = document.getElementById('available-exams-list');
-        if (error || !data || data.length === 0) { tbody.innerHTML = "<tr><td colspan='5'>सध्या कोणतीही परीक्षा उपलब्ध नाही.</td></tr>"; return; }
         
-        tbody.innerHTML = data.map(e => `
+        if (error || !allExams || allExams.length === 0) { 
+            tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>सध्या कोणतीही नवीन परीक्षा उपलब्ध नाही.</td></tr>"; 
+            return; 
+        }
+
+        // २. विद्यार्थ्याने आधीच दिलेल्या परीक्षांचे IDs शोधणे
+        const { data: pastResults } = await supabaseClient
+            .from('results')
+            .select('exam_id')
+            .eq('student_id', currentStudentId);
+            
+        // आधी दिलेल्या परीक्षांची यादी (Array) बनवणे
+        const completedExamIds = pastResults ? pastResults.map(r => r.exam_id) : [];
+
+        // ३. उपलब्ध परीक्षांमधून 'आधी दिलेल्या परीक्षा' वगळणे (Filter out)
+        const pendingExams = allExams.filter(exam => !completedExamIds.includes(exam.id));
+
+        // ४. जर सर्व परीक्षा देऊन झाल्या असतील तर मेसेज दाखवणे
+        if (pendingExams.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; color:green;'>तुम्ही सर्व उपलब्ध परीक्षा पूर्ण केल्या आहेत!</td></tr>";
+            return;
+        }
+        
+        // ५. फक्त न दिलेल्या परीक्षा लिस्टमध्ये दाखवणे
+        tbody.innerHTML = pendingExams.map(e => `
             <tr>
                 <td><strong>${e.exam_title}</strong></td>
                 <td>${e.exam_type}</td>
@@ -276,7 +305,6 @@
             </tr>
         `).join('');
     }
-
     /* ----------------------------------------------------------------
        EXAM LOGIC & UI RENDERING
        ---------------------------------------------------------------- */
