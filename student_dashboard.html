@@ -231,45 +231,58 @@
         tbody.innerHTML = rowsHtml;
     }
 
-    // २. माझा निकाल आणणे
+// --- ४. माझे निकाल पाहणे (सुधारित आणि एरर-फ्री) ---
     async function fetchMyResults() {
+        // १. प्रथम फक्त निकाल आणणे
+        const { data: resultsData, error } = await supabaseClient
+            .from('results')
+            .select('*')
+            .eq('student_id', currentStudentId)
+            .order('created_at', { ascending: false });
+            
         const tbody = document.getElementById('my-results-list');
-        tbody.innerHTML = "<tr><td colspan='7'>निकाल शोधत आहे...</td></tr>";
-
-        // Join query to get exam title along with result
-        const { data: results, error } = await supabaseClient.from('results').select('*, exams(exam_title)').eq('student_id', currentStudent.id).order('created_at', { ascending: false });
         
-        if (error || !results || results.length === 0) {
-            tbody.innerHTML = "<tr><td colspan='7' style='text-align:center;'>तुम्ही अद्याप कोणतीही परीक्षा दिलेली नाही.</td></tr>";
-            return;
+        if (error || !resultsData || resultsData.length === 0) { 
+            tbody.innerHTML = "<tr><td colspan='7' style='text-align:center; color:red;'>तुम्ही अद्याप कोणतीही परीक्षा दिलेली नाही.</td></tr>"; 
+            if(error) console.error("Error fetching results:", error);
+            return; 
         }
 
-        tbody.innerHTML = results.map(r => {
-            const title = r.exams ? r.exams.exam_title : `Exam ID: ${r.exam_id}`;
+        // २. परीक्षेचे नाव (Title) मॅन्युअली जोडणे
+        const examIds = [...new Set(resultsData.map(r => r.exam_id))];
+        const { data: examsData } = await supabaseClient
+            .from('exams')
+            .select('id, exam_title')
+            .in('id', examIds);
+
+        const examMap = {};
+        if (examsData) {
+            examsData.forEach(e => { examMap[e.id] = e.exam_title; });
+        }
+
+        // ३. टेबलमध्ये निकाल दाखवणे
+        tbody.innerHTML = resultsData.map(r => {
             const correct = r.correct_answers || 0;
             const wrong = r.wrong_answers || 0;
             const unattempted = r.unattempted || 0;
-            const totalQs = r.total_questions;
             
-            const maxScore = totalQs * 4;
-            const obtainedScore = r.obtained_score; 
-            const percentage = maxScore > 0 ? ((obtainedScore / maxScore) * 100).toFixed(1) : 0;
+            const maxScore = r.total_questions * 4;
+            const percentage = maxScore > 0 ? ((r.obtained_score / maxScore) * 100).toFixed(1) : 0;
+            const badge = percentage < 50 ? `<span class='badge badge-danger'>Needs Practice</span>` : `<span class='badge badge-success'>Good</span>`;
             
-            let badge = percentage < 50 ? `<span class='badge badge-danger'>Practice Needed</span>` : `<span class='badge badge-success'>Good</span>`;
-            
+            const examTitle = examMap[r.exam_id] || `Exam ID: ${r.exam_id}`;
+
             return `<tr>
-                <td><strong>${title}</strong></td>
-                <td>${totalQs}</td>
+                <td><strong>${examTitle}</strong></td>
+                <td>${r.total_questions}</td>
                 <td class="text-green">${correct}</td>
                 <td class="text-red">${wrong}</td>
-                <td class="text-gray">${unattempted}</td>
-                <td><strong>${obtainedScore}</strong> / ${maxScore} <br><small>(${percentage}%)</small></td>
+                <td>${unattempted}</td>
+                <td><strong>${r.obtained_score}</strong> / ${maxScore} <br><small>(${percentage}%)</small></td>
                 <td>${badge}</td>
             </tr>`;
         }).join('');
-    }
-
-    // ३. परीक्षा सुरू करणे (प्रश्नांची मांडणी)
+    }    // ३. परीक्षा सुरू करणे (प्रश्नांची मांडणी)
     async function startExam(examId) {
         showToast("परीक्षा लोड होत आहे, कृपया थांबा...", "info");
         
