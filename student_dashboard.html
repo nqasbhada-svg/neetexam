@@ -144,16 +144,16 @@
 
     <div id="toast"></div>
 
-<script>
-    const SUPABASE_URL = 'https://rabujuzuycdkxalyelcd.supabase.co';
+const SUPABASE_URL = 'https://rabujuzuycdkxalyelcd.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_6xnlWswPyQ_BbzKySdHGAw_waSsMuf0';
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const TABLE_NAME = 'NEET QUESTION BANK';
 
-    let currentStudent = null;
-    let liveExamData = null;
-    let liveQuestions = [];
-    let dbKeys = {}; // To store dynamic column names
+    // हे व्हेरिएबल्स असणे खूप महत्त्वाचे आहे (यामुळेच एरर येत होती)
+    let currentStudentId = null;
+    let currentExamData = null;
+    let examQuestions = [];
+    let timerInterval = null;
 
     function showToast(message, type = 'success') {
         const toast = document.getElementById("toast");
@@ -165,13 +165,9 @@
     function openTab(tabId) {
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        
         document.getElementById(tabId).classList.add('active');
+        event.currentTarget.classList.add('active');
         
-        // Find button and make it active (if it exists)
-        const btn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tabId));
-        if(btn) btn.classList.add('active');
-
         if(tabId === 'tab-exams') fetchAvailableExams();
         if(tabId === 'tab-results') fetchMyResults();
     }
@@ -181,76 +177,171 @@
         if (!session) { window.location.href = "index.html"; return; }
         
         const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', session.user.id).single();
-        
-        if (!profile || profile.role !== 'student') { 
+        if (!profile || profile.role !== 'student' || !profile.is_active) { 
+            alert("तुमचे अकाउंट अजून ॲडमिनने ॲक्टिव्हेट केलेले नाही किंवा तुम्ही विद्यार्थी नाही.");
             window.location.href = "index.html"; 
-        } else if (!profile.is_active) {
-            alert("तुमचे अकाउंट अजून ॲडमिनने ॲक्टिव्हेट केलेले नाही.");
-            await supabaseClient.auth.signOut();
-            window.location.href = "index.html";
-        } else {
-            currentStudent = profile;
-            document.getElementById('student_name').innerText = "स्वागत आहे, " + profile.name;
-            fetchAvailableExams();
+        } else { 
+            currentStudentId = profile.id; // येथे Student ID सेव्ह होतो
+            document.getElementById('student-name-display').innerText = "स्वागत आहे, " + profile.name;
+            fetchAvailableExams(); 
         }
     }
 
-    // १. उपलब्ध परीक्षा आणणे
     async function fetchAvailableExams() {
         const now = new Date().toISOString();
-        // ज्या परीक्षांची मुदत संपलेली नाही त्या आणणे
-        const { data: exams, error } = await supabaseClient.from('exams').select('*').gte('valid_until', now).order('id', { ascending: false });
-        const tbody = document.getElementById('available-exams-list');
+        const { data, error } = await supabaseClient.from('exams').select('*').gte('valid_until', now).order('id', { ascending: false });
         
-        if (error || !exams || exams.length === 0) { 
-            tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>सध्या कोणतीही परीक्षा उपलब्ध नाही.</td></tr>"; 
-            return; 
-        }
-
-        // विद्यार्थ्याने आधीच दिलेल्या परीक्षा शोधणे
-        const { data: results } = await supabaseClient.from('results').select('exam_id').eq('student_id', currentStudent.id);
-        const attemptedExamIds = results ? results.map(r => r.exam_id) : [];
-
-        let rowsHtml = '';
-        exams.forEach(e => {
-            const dateStr = new Date(e.valid_until).toLocaleString('en-IN');
-            const isAttempted = attemptedExamIds.includes(e.id);
-            
-            let actionBtn = isAttempted 
-                ? `<span class='badge badge-success'>Completed</span>` 
-                : `<button class='btn-start' onclick="startExam(${e.id})">Start Exam</button>`;
-
-            rowsHtml += `<tr>
+        const tbody = document.getElementById('available-exams-list');
+        if (error || !data || data.length === 0) { tbody.innerHTML = "<tr><td colspan='5'>सध्या कोणतीही परीक्षा उपलब्ध नाही.</td></tr>"; return; }
+        
+        tbody.innerHTML = data.map(e => `
+            <tr>
                 <td><strong>${e.exam_title}</strong></td>
                 <td>${e.exam_type}</td>
                 <td>${e.total_questions}</td>
-                <td>${dateStr}</td>
-                <td>${actionBtn}</td>
-            </tr>`;
-        });
-        tbody.innerHTML = rowsHtml;
+                <td>${new Date(e.valid_until).toLocaleString('en-IN')}</td>
+                <td><button class='btn-primary' onclick="startExam(${e.id})">परीक्षा सुरू करा</button></td>
+            </tr>
+        `).join('');
     }
 
-// --- ४. माझे निकाल पाहणे (अति-सुरक्षित आणि Error-Handling सह) ---
+    async function startExam(examId) {
+        const { data: examInfo } = await supabaseClient.from('exams').select('*').eq('id', examId).single();
+        if(!examInfo) return;
+        currentExamData = examInfo;
+
+        document.getElementById('main-nav').classList.add('hidden');
+        document.getElementById('main-container').classList.add('hidden');
+        document.getElementById('exam-interface').classList.remove('hidden');
+        document.getElementById('live-exam-title').innerText = examInfo.exam_title;
+
+        let query = supabaseClient.from(TABLE_NAME).select('*');
+        
+        const { data: sample } = await supabaseClient.from(TABLE_NAME).select('*').limit(1);
+        const colSubj = sample[0].hasOwnProperty('Subject') ? 'Subject' : 'subject';
+        const colChap = sample[0].hasOwnProperty('Chapter') ? 'Chapter' : 'chapter';
+
+        if(examInfo.exam_type === 'Subject' && examInfo.subjects) {
+            query = query.in(colSubj, examInfo.subjects.split(', '));
+        } else if(examInfo.exam_type === 'Chapter' && examInfo.chapters) {
+            query = query.in(colChap, examInfo.chapters.split(', '));
+        }
+
+        const { data: questions } = await query;
+        
+        if(!questions || questions.length === 0) {
+            alert("या परीक्षेसाठी डेटाबेसमध्ये प्रश्न सापडले नाहीत.");
+            window.location.reload(); return;
+        }
+
+        examQuestions = questions.sort(() => 0.5 - Math.random()).slice(0, examInfo.total_questions);
+        renderQuestions();
+        startTimer(examInfo.total_questions * 60); 
+    }
+
+    function renderQuestions() {
+        const container = document.getElementById('questions-container');
+        container.innerHTML = "";
+
+        const isCap = examQuestions[0].hasOwnProperty('Option A');
+        
+        examQuestions.forEach((q, index) => {
+            const optA = isCap ? q['Option A'] : q['option a'] || q['option_a'];
+            const optB = isCap ? q['Option B'] : q['option b'] || q['option_b'];
+            const optC = isCap ? q['Option C'] : q['option c'] || q['option_c'];
+            const optD = isCap ? q['Option D'] : q['option d'] || q['option_d'];
+            const questionText = isCap ? q['Question'] : q['question'];
+
+            container.innerHTML += `
+                <div class="question-box" id="qbox_${index}">
+                    <div class="question-text">${index + 1}. ${questionText}</div>
+                    
+                    <label class="option-label"><input type="radio" name="q_${index}" value="A"> A) ${optA}</label>
+                    <label class="option-label"><input type="radio" name="q_${index}" value="B"> B) ${optB}</label>
+                    <label class="option-label"><input type="radio" name="q_${index}" value="C"> C) ${optC}</label>
+                    <label class="option-label"><input type="radio" name="q_${index}" value="D"> D) ${optD}</label>
+                </div>
+            `;
+        });
+    }
+
+    function startTimer(seconds) {
+        clearInterval(timerInterval);
+        const timerDisplay = document.getElementById('exam-timer');
+        
+        timerInterval = setInterval(() => {
+            seconds--;
+            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const s = (seconds % 60).toString().padStart(2, '0');
+            timerDisplay.innerText = `${m}:${s}`;
+            
+            if (seconds <= 0) {
+                clearInterval(timerInterval);
+                alert("वेळ संपली! तुमचा पेपर आपोआप जमा होत आहे.");
+                submitExam();
+            }
+        }, 1000);
+    }
+
+    async function submitExam() {
+        clearInterval(timerInterval);
+        if(!confirm("तुम्हाला खात्री आहे का की तुम्हाला पेपर जमा करायचा आहे?")) {
+            startTimer(document.getElementById('exam-timer').innerText.split(':').reduce((acc,time) => (60 * acc) + +time)); 
+            return;
+        }
+
+        let correct = 0, wrong = 0, unattempted = 0;
+        const isCap = examQuestions[0].hasOwnProperty('Correct Option');
+
+        examQuestions.forEach((q, index) => {
+            const selected = document.querySelector(`input[name="q_${index}"]:checked`);
+            const ansRaw = isCap ? q['Correct Option'] : q['correct option'] || q['correct_option'];
+            const correctAns = ansRaw ? ansRaw.toString().trim().charAt(0).toUpperCase() : "";
+
+            if (!selected) {
+                unattempted++;
+            } else if (selected.value === correctAns) {
+                correct++;
+            } else {
+                wrong++;
+            }
+        });
+
+        const obtainedScore = (correct * 4) - (wrong * 1);
+
+        document.getElementById('questions-container').innerHTML = "<div style='text-align:center; font-size:18px;'>निकाल सेव्ह होत आहे...</div>";
+
+        await supabaseClient.from('results').insert([{
+            student_id: currentStudentId,
+            exam_id: currentExamData.id,
+            total_questions: currentExamData.total_questions,
+            correct_answers: correct,
+            wrong_answers: wrong,
+            unattempted: unattempted,
+            obtained_score: obtainedScore
+        }]);
+
+        alert(`परीक्षा पूर्ण झाली!\nबरोबर: ${correct}\nचूक: ${wrong}\nगुण: ${obtainedScore}`);
+        window.location.reload();
+    }
+
     async function fetchMyResults() {
         const tbody = document.getElementById('my-results-list');
         
         try {
-            // १. निकाल आणणे
             const { data: resultsData, error } = await supabaseClient
                 .from('results')
                 .select('*')
                 .eq('student_id', currentStudentId)
                 .order('created_at', { ascending: false });
                 
-            if (error) throw error; // जर एरर असेल तर थेट Catch कडे पाठवा
+            if (error) throw error; 
             
             if (!resultsData || resultsData.length === 0) { 
                 tbody.innerHTML = "<tr><td colspan='7' style='text-align:center; color:#6B7280;'>तुम्ही अद्याप कोणतीही परीक्षा दिलेली नाही.</td></tr>"; 
                 return; 
             }
 
-            // २. परीक्षेचे नाव (Title) आणणे (फक्त ID असेल तर)
             const examIds = [...new Set(resultsData.map(r => r.exam_id).filter(id => id != null))];
             let examMap = {};
             
@@ -265,7 +356,6 @@
                 }
             }
 
-            // ३. टेबलमध्ये निकाल दाखवणे
             tbody.innerHTML = resultsData.map(r => {
                 const correct = r.correct_answers || 0;
                 const wrong = r.wrong_answers || 0;
@@ -290,156 +380,14 @@
             
         } catch (err) {
             console.error("अडचण आली:", err);
-            // जर कोड अडकला तर 'लोड होत आहे...' ऐवजी स्क्रीनवर एरर दिसेल
             tbody.innerHTML = `<tr><td colspan='7' style='text-align:center; color:red; font-weight:bold;'>तांत्रिक अडचण: ${err.message}</td></tr>`;
         }
     }
-    // ३. परीक्षा सुरू करणे (प्रश्नांची मांडणी)
-    async function startExam(examId) {
-        showToast("परीक्षा लोड होत आहे, कृपया थांबा...", "info");
-        
-        // Fetch Exam details
-        const { data: exam } = await supabaseClient.from('exams').select('*').eq('id', examId).single();
-        if(!exam) return;
-        
-        liveExamData = exam;
-        document.getElementById('live_exam_title').innerHTML = `${exam.exam_title} <span style="color: var(--danger); font-size: 14px;">(कृपया पेज रिफ्रेश करू नका)</span>`;
 
-        // Fetch Questions Logic
-        const { data: sample } = await supabaseClient.from(TABLE_NAME).select('*').limit(1);
-        if(!sample || sample.length === 0) {
-            alert("प्रश्न पेढीमध्ये प्रश्न आढळले नाहीत."); return;
-        }
+    async function logout() { await supabaseClient.auth.signOut(); window.location.href = "index.html"; }
 
-        // Identify exact column names (Case Sensitive handling)
-        const keys = Object.keys(sample[0]);
-        dbKeys = {
-            subj: keys.find(k => k.toLowerCase() === 'subject'),
-            chap: keys.find(k => k.toLowerCase() === 'chapter'),
-            q: keys.find(k => k.toLowerCase() === 'question'),
-            optA: keys.find(k => k.toLowerCase() === 'option a'),
-            optB: keys.find(k => k.toLowerCase() === 'option b'),
-            optC: keys.find(k => k.toLowerCase() === 'option c'),
-            optD: keys.find(k => k.toLowerCase() === 'option d'),
-            correctOpt: keys.find(k => k.toLowerCase() === 'correct option')
-        };
-
-        let query = supabaseClient.from(TABLE_NAME).select('*');
-        
-        if (exam.exam_type === 'Subject' && exam.subjects) {
-            const subjArray = exam.subjects.split(',').map(s => s.trim());
-            query = query.in(dbKeys.subj, subjArray);
-        } else if (exam.exam_type === 'Chapter' && exam.chapters) {
-            const chapArray = exam.chapters.split(',').map(s => s.trim());
-            query = query.in(dbKeys.chap, chapArray);
-        }
-
-        const { data: questionsData, error } = await query.limit(500); // Fetch max 500 to shuffle
-        
-        if(error || !questionsData || questionsData.length === 0) {
-            alert("या परीक्षेसाठी योग्य प्रश्न सापडले नाहीत."); return;
-        }
-
-        // Shuffle array and slice to total_questions required by admin
-        liveQuestions = questionsData.sort(() => 0.5 - Math.random()).slice(0, exam.total_questions);
-
-        renderExamUI();
-
-        // Switch Tabs visually
-        document.getElementById('main_tabs').classList.add('hidden');
-        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-        document.getElementById('tab-live-exam').classList.add('active');
-        document.getElementById('tab-live-exam').classList.remove('hidden');
-    }
-
-    // ४. प्रश्न स्क्रीनवर दाखवणे
-    function renderExamUI() {
-        const container = document.getElementById('questions_container');
-        let html = '';
-
-        liveQuestions.forEach((q, index) => {
-            const qNum = index + 1;
-            html += `
-            <div class="question-box">
-                <div class="q-text">प्र. ${qNum}: ${q[dbKeys.q]}</div>
-                <div class="options-grid">
-                    <label class="option-label"><input type="radio" name="q_${index}" value="A"> (A) ${q[dbKeys.optA]}</label>
-                    <label class="option-label"><input type="radio" name="q_${index}" value="B"> (B) ${q[dbKeys.optB]}</label>
-                    <label class="option-label"><input type="radio" name="q_${index}" value="C"> (C) ${q[dbKeys.optC]}</label>
-                    <label class="option-label"><input type="radio" name="q_${index}" value="D"> (D) ${q[dbKeys.optD]}</label>
-                </div>
-            </div>`;
-        });
-
-        container.innerHTML = html;
-    }
-
-    // ५. परीक्षा सबमिट करणे आणि पेपर तपासणे (+4, -1, 0)
-    async function submitExam() {
-        const confirmSubmit = confirm("तुम्हाला खात्री आहे की तुम्ही परीक्षा सबमिट करू इच्छिता?");
-        if(!confirmSubmit) return;
-
-        const btn = document.getElementById('submit_exam_btn');
-        btn.innerText = "तपासणी सुरू आहे...";
-        btn.disabled = true;
-
-        let correct = 0, wrong = 0, unattempted = 0;
-
-        liveQuestions.forEach((q, index) => {
-            const selected = document.querySelector(`input[name="q_${index}"]:checked`);
-            if (!selected) {
-                unattempted++;
-            } else {
-                const userAns = selected.value; // "A", "B", "C", "D"
-                let actualAnsStr = String(q[dbKeys.correctOpt]).trim().toUpperCase();
-                
-                // If correct option in DB is exactly "A" or contains "A"
-                if (actualAnsStr === userAns || actualAnsStr.startsWith(userAns)) {
-                    correct++;
-                } else {
-                    wrong++;
-                }
-            }
-        });
-
-        // Calculate final score
-        const obtainedScore = (correct * 4) - (wrong * 1);
-
-        // Save to Supabase results table
-        const { error } = await supabaseClient.from('results').insert([{
-            student_id: currentStudent.id,
-            exam_id: liveExamData.id,
-            total_questions: liveQuestions.length,
-            correct_answers: correct,
-            wrong_answers: wrong,
-            unattempted: unattempted,
-            obtained_score: obtainedScore
-        }]);
-
-        btn.innerText = "परीक्षा सबमिट करा";
-        btn.disabled = false;
-
-        if (error) {
-            showToast("निकाल सेव्ह करताना अडचण आली: " + error.message, "error");
-        } else {
-            showToast("परीक्षा यशस्वीरीत्या पूर्ण झाली!", "success");
-            
-            // Hide live exam tab, show main tabs and go to results
-            document.getElementById('tab-live-exam').classList.add('hidden');
-            document.getElementById('tab-live-exam').classList.remove('active');
-            document.getElementById('main_tabs').classList.remove('hidden');
-            
-            openTab('tab-results'); // Redirect to scorecards
-        }
-    }
-
-    async function logout() { 
-        await supabaseClient.auth.signOut(); 
-        window.location.href = "index.html"; 
-    }
-
-    // Start
+    // पेज लोड झाल्यावर सर्वात आधी हे फंक्शन कॉल होते
     checkStudent();
-</script>
+   </script>
 </body>
 </html>
