@@ -76,18 +76,18 @@
     <div class="navbar">
         <h2>NEET Exam Platform</h2>
         <div>
-            <span class="user-info" id="student_name">Loading...</span>
+            <span class="user-info" id="student-name-display">Loading...</span>
             <button class="logout-btn" onclick="logout()">लॉगआउट करा</button>
         </div>
     </div>
 
     <!-- Tabs Menu -->
-    <div class="tab-menu" id="main_tabs">
+    <div class="tab-menu" id="main-nav">
         <button class="tab-btn active" onclick="openTab('tab-exams')">📚 उपलब्ध परीक्षा</button>
         <button class="tab-btn" onclick="openTab('tab-results')">📊 माझा निकाल (Scorecard)</button>
     </div>
 
-    <div class="container">
+    <div class="container" id="main-container">
         
         <!-- १. उपलब्ध परीक्षा (Available Exams) -->
         <div id="tab-exams" class="tab-content active">
@@ -122,34 +122,31 @@
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- ३. Live Exam Interface (सुरुवातीला लपवलेले) -->
-        <div id="tab-live-exam" class="tab-content hidden">
-            <div class="card">
-                <h3 class="card-header" id="live_exam_title">
-                    परीक्षा सुरू आहे...
-                    <span style="color: var(--danger); font-size: 14px;">(कृपया पेज रिफ्रेश करू नका)</span>
-                </h3>
-                
-                <div id="questions_container">
-                    <!-- प्रश्न डायनॅमिकली इथे लोड होतील -->
-                    <p>प्रश्न लोड होत आहेत, कृपया थांबा...</p>
-                </div>
-
-                <button class="btn-submit" onclick="submitExam()" id="submit_exam_btn">परीक्षा सबमिट करा</button>
+    <!-- ३. Live Exam Interface (सुरुवातीला लपवलेले) -->
+    <div id="exam-interface" class="hidden" style="width: 100%; height: 100vh; position: fixed; top: 0; left: 0; background: white; z-index: 100; overflow-y: auto;">
+        <div class="navbar" style="position: sticky; top: 0; z-index: 10; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); background: white; color: black; border-bottom: 2px solid var(--border);">
+            <h2 id="live-exam-title">परीक्षा सुरू आहे...</h2>
+            <div>
+                <span style="color: var(--danger); font-size: 20px; font-weight: bold; margin-right: 20px;" id="exam-timer">00:00</span>
+                <button class="btn-submit" style="margin-top: 0; width: auto; padding: 8px 16px;" onclick="submitExam()">पेपर जमा करा (Submit)</button>
             </div>
         </div>
-
+        <div class="container" style="max-width: 800px; padding-top: 20px; padding-bottom: 100px;" id="questions-container">
+            <!-- प्रश्न इथे लोड होतील -->
+            <div style="text-align: center; margin-top: 50px; font-size: 18px;">प्रश्न लोड होत आहेत, कृपया थांबा...</div>
+        </div>
     </div>
 
     <div id="toast"></div>
 
-const SUPABASE_URL = 'https://rabujuzuycdkxalyelcd.supabase.co';
+<script>
+    const SUPABASE_URL = 'https://rabujuzuycdkxalyelcd.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_6xnlWswPyQ_BbzKySdHGAw_waSsMuf0';
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const TABLE_NAME = 'NEET QUESTION BANK';
 
-    // हे व्हेरिएबल्स असणे खूप महत्त्वाचे आहे (यामुळेच एरर येत होती)
     let currentStudentId = null;
     let currentExamData = null;
     let examQuestions = [];
@@ -181,7 +178,7 @@ const SUPABASE_URL = 'https://rabujuzuycdkxalyelcd.supabase.co';
             alert("तुमचे अकाउंट अजून ॲडमिनने ॲक्टिव्हेट केलेले नाही किंवा तुम्ही विद्यार्थी नाही.");
             window.location.href = "index.html"; 
         } else { 
-            currentStudentId = profile.id; // येथे Student ID सेव्ह होतो
+            currentStudentId = profile.id; 
             document.getElementById('student-name-display').innerText = "स्वागत आहे, " + profile.name;
             fetchAvailableExams(); 
         }
@@ -200,7 +197,7 @@ const SUPABASE_URL = 'https://rabujuzuycdkxalyelcd.supabase.co';
                 <td>${e.exam_type}</td>
                 <td>${e.total_questions}</td>
                 <td>${new Date(e.valid_until).toLocaleString('en-IN')}</td>
-                <td><button class='btn-primary' onclick="startExam(${e.id})">परीक्षा सुरू करा</button></td>
+                <td><button class='btn-start' onclick="startExam(${e.id})">परीक्षा सुरू करा</button></td>
             </tr>
         `).join('');
     }
@@ -254,12 +251,13 @@ const SUPABASE_URL = 'https://rabujuzuycdkxalyelcd.supabase.co';
 
             container.innerHTML += `
                 <div class="question-box" id="qbox_${index}">
-                    <div class="question-text">${index + 1}. ${questionText}</div>
-                    
-                    <label class="option-label"><input type="radio" name="q_${index}" value="A"> A) ${optA}</label>
-                    <label class="option-label"><input type="radio" name="q_${index}" value="B"> B) ${optB}</label>
-                    <label class="option-label"><input type="radio" name="q_${index}" value="C"> C) ${optC}</label>
-                    <label class="option-label"><input type="radio" name="q_${index}" value="D"> D) ${optD}</label>
+                    <div class="q-text">${index + 1}. ${questionText}</div>
+                    <div class="options-grid">
+                        <label class="option-label"><input type="radio" name="q_${index}" value="A"> A) ${optA}</label>
+                        <label class="option-label"><input type="radio" name="q_${index}" value="B"> B) ${optB}</label>
+                        <label class="option-label"><input type="radio" name="q_${index}" value="C"> C) ${optC}</label>
+                        <label class="option-label"><input type="radio" name="q_${index}" value="D"> D) ${optD}</label>
+                    </div>
                 </div>
             `;
         });
@@ -386,8 +384,7 @@ const SUPABASE_URL = 'https://rabujuzuycdkxalyelcd.supabase.co';
 
     async function logout() { await supabaseClient.auth.signOut(); window.location.href = "index.html"; }
 
-    // पेज लोड झाल्यावर सर्वात आधी हे फंक्शन कॉल होते
     checkStudent();
-   </script>
+</script>
 </body>
 </html>
