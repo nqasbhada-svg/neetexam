@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - NEET Exam Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        :root {
+            --primary: #4F46E5; --primary-hover: #4338CA;
+            --success: #10B981; --success-hover: #059669;
+            --danger: #EF4444; --danger-hover: #DC2626;
+            --warning: #F59E0B;
+            --bg-color: #F3F4F6; --card-bg: #FFFFFF;
+            --text-main: #1F2937; --text-muted: #6B7280;
+            --border: #E5E7EB;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); line-height: 1.6; display: flex; flex-direction: column; height: 100vh; }
+
+        .navbar { background: #111827; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        .navbar h2 { font-size: 20px; font-weight: 600; }
+        .user-info { font-size: 14px; color: #9CA3AF; margin-right: 15px; }
+        .logout-btn { background: var(--danger); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+        .logout-btn:hover { background: var(--danger-hover); }
+
+        .tab-menu { background: #1F2937; display: flex; padding: 0 20px; }
+        .tab-btn { background: none; color: #9CA3AF; border: none; padding: 12px 20px; cursor: pointer; font-size: 15px; font-weight: 500; border-bottom: 3px solid transparent; transition: 0.3s; }
+        .tab-btn:hover { color: white; }
+        .tab-btn.active { color: white; border-bottom-color: var(--primary); }
+
+        .container { padding: 30px; max-width: 1000px; margin: 0 auto; width: 100%; overflow-y: auto; flex-grow: 1; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card { background: var(--card-bg); padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 24px; border: 1px solid var(--border); }
+        .card-header { font-size: 18px; font-weight: 600; margin-bottom: 20px; border-bottom: 2px solid var(--border); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center;}
+
+        /* Table & Badges */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; }
+        th { background-color: #F9FAFB; font-weight: 600; color: var(--text-muted); font-size: 12px; text-transform: uppercase; }
+        .badge { padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; display: inline-block; }
+        .badge-success { background: #D1FAE5; color: #065F46; }
+        .badge-danger { background: #FEE2E2; color: #991B1B; }
+        .text-green { color: var(--success); font-weight: bold; }
+        .text-red { color: var(--danger); font-weight: bold; }
+
+        /* Buttons */
+        .btn-start { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; }
+        .btn-start:hover { background: var(--primary-hover); }
+        .btn-submit { background: var(--success); color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 16px; width: 100%; margin-top: 20px;}
+        .btn-submit:hover { background: var(--success-hover); }
+
+        /* Exam Interface UI */
+        .question-box { background: #F9FAFB; border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .q-text { font-size: 16px; font-weight: 600; margin-bottom: 15px; color: #111827; }
+        .options-grid { display: flex; flex-direction: column; gap: 10px; }
+        .option-label { display: flex; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: white; cursor: pointer; transition: 0.2s; }
+        .option-label:hover { border-color: var(--primary); background: #EEF2FF; }
+        .option-label input { margin-right: 15px; transform: scale(1.2); accent-color: var(--primary); }
+
+        #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 6px; padding: 16px; position: fixed; right: 30px; top: 30px; z-index: 1000; opacity: 0; transition: 0.3s; }
+        #toast.show { visibility: visible; opacity: 1; top: 50px; }
+        #toast.success { background-color: var(--success); }
+        #toast.error { background-color: var(--danger); }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <h2>NEET Exam Platform</h2>
+        <div>
+            <span class="user-info" id="student_name">Loading...</span>
+            <button class="logout-btn" onclick="logout()">लॉगआउट करा</button>
+        </div>
+    </div>
+
+    <!-- Tabs Menu -->
+    <div class="tab-menu" id="main_tabs">
+        <button class="tab-btn active" onclick="openTab('tab-exams')">📚 उपलब्ध परीक्षा</button>
+        <button class="tab-btn" onclick="openTab('tab-results')">📊 माझा निकाल (Scorecard)</button>
+    </div>
+
+    <div class="container">
+        
+        <!-- १. उपलब्ध परीक्षा (Available Exams) -->
+        <div id="tab-exams" class="tab-content active">
+            <div class="card">
+                <h3 class="card-header">तुमच्यासाठी उपलब्ध परीक्षा</h3>
+                <table>
+                    <thead><tr><th>परीक्षेचे नाव</th><th>प्रकार</th><th>एकूण प्रश्न</th><th>शेवटची तारीख</th><th>कृती</th></tr></thead>
+                    <tbody id="available-exams-list"><tr><td colspan="5">लोड होत आहे...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- २. माझा निकाल (My Results) -->
+        <div id="tab-results" class="tab-content">
+            <div class="card">
+                <h3 class="card-header">माझा निकाल (NEET Pattern)</h3>
+                <div style="overflow-x: auto;">
+                    <table style="min-width: 700px;">
+                        <thead>
+                            <tr>
+                                <th>परीक्षेचे नाव</th>
+                                <th>एकूण प्रश्न</th>
+                                <th>बरोबर (+4)</th>
+                                <th>चूक (-1)</th>
+                                <th>सोडवले नाहीत (0)</th>
+                                <th>गुण</th>
+                                <th>शेरा</th>
+                            </tr>
+                        </thead>
+                        <tbody id="my-results-list"><tr><td colspan="7">लोड होत आहे...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ३. Live Exam Interface (सुरुवातीला लपवलेले) -->
+        <div id="tab-live-exam" class="tab-content hidden">
+            <div class="card">
+                <h3 class="card-header" id="live_exam_title">
+                    परीक्षा सुरू आहे...
+                    <span style="color: var(--danger); font-size: 14px;">(कृपया पेज रिफ्रेश करू नका)</span>
+                </h3>
+                
+                <div id="questions_container">
+                    <!-- प्रश्न डायनॅमिकली इथे लोड होतील -->
+                    <p>प्रश्न लोड होत आहेत, कृपया थांबा...</p>
+                </div>
+
+                <button class="btn-submit" onclick="submitExam()" id="submit_exam_btn">परीक्षा सबमिट करा</button>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="toast"></div>
+
+<script>
+    const SUPABASE_URL = 'https://rabujuzuycdkxalyelcd.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_6xnlWswPyQ_BbzKySdHGAw_waSsMuf0';
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const TABLE_NAME = 'NEET QUESTION BANK';
+
+    let currentStudent = null;
+    let liveExamData = null;
+    let liveQuestions = [];
+    let dbKeys = {}; // To store dynamic column names
+
+    function showToast(message, type = 'success') {
+        const toast = document.getElementById("toast");
+        toast.className = "show " + type;
+        toast.innerText = message;
+        setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3500);
+    }
+
+    function openTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        
+        document.getElementById(tabId).classList.add('active');
+        
+        // Find button and make it active (if it exists)
+        const btn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tabId));
+        if(btn) btn.classList.add('active');
+
+        if(tabId === 'tab-exams') fetchAvailableExams();
+        if(tabId === 'tab-results') fetchMyResults();
+    }
+
+    async function checkStudent() {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) { window.location.href = "index.html"; return; }
+        
+        const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', session.user.id).single();
+        
+        if (!profile || profile.role !== 'student') { 
+            window.location.href = "index.html"; 
+        } else if (!profile.is_active) {
+            alert("तुमचे अकाउंट अजून ॲडमिनने ॲक्टिव्हेट केलेले नाही.");
+            await supabaseClient.auth.signOut();
+            window.location.href = "index.html";
+        } else {
+            currentStudent = profile;
+            document.getElementById('student_name').innerText = "स्वागत आहे, " + profile.name;
+            fetchAvailableExams();
+        }
+    }
+
+    // १. उपलब्ध परीक्षा आणणे
+    async function fetchAvailableExams() {
+        const now = new Date().toISOString();
+        // ज्या परीक्षांची मुदत संपलेली नाही त्या आणणे
+        const { data: exams, error } = await supabaseClient.from('exams').select('*').gte('valid_until', now).order('id', { ascending: false });
+        const tbody = document.getElementById('available-exams-list');
+        
+        if (error || !exams || exams.length === 0) { 
+            tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>सध्या कोणतीही परीक्षा उपलब्ध नाही.</td></tr>"; 
+            return; 
+        }
+
+        // विद्यार्थ्याने आधीच दिलेल्या परीक्षा शोधणे
+        const { data: results } = await supabaseClient.from('results').select('exam_id').eq('student_id', currentStudent.id);
+        const attemptedExamIds = results ? results.map(r => r.exam_id) : [];
+
+        let rowsHtml = '';
+        exams.forEach(e => {
+            const dateStr = new Date(e.valid_until).toLocaleString('en-IN');
+            const isAttempted = attemptedExamIds.includes(e.id);
+            
+            let actionBtn = isAttempted 
+                ? `<span class='badge badge-success'>Completed</span>` 
+                : `<button class='btn-start' onclick="startExam(${e.id})">Start Exam</button>`;
+
+            rowsHtml += `<tr>
+                <td><strong>${e.exam_title}</strong></td>
+                <td>${e.exam_type}</td>
+                <td>${e.total_questions}</td>
+                <td>${dateStr}</td>
+                <td>${actionBtn}</td>
+            </tr>`;
+        });
+        tbody.innerHTML = rowsHtml;
+    }
+
+    // २. माझा निकाल आणणे
+    async function fetchMyResults() {
+        const tbody = document.getElementById('my-results-list');
+        tbody.innerHTML = "<tr><td colspan='7'>निकाल शोधत आहे...</td></tr>";
+
+        // Join query to get exam title along with result
+        const { data: results, error } = await supabaseClient.from('results').select('*, exams(exam_title)').eq('student_id', currentStudent.id).order('created_at', { ascending: false });
+        
+        if (error || !results || results.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='7' style='text-align:center;'>तुम्ही अद्याप कोणतीही परीक्षा दिलेली नाही.</td></tr>";
+            return;
+        }
+
+        tbody.innerHTML = results.map(r => {
+            const title = r.exams ? r.exams.exam_title : `Exam ID: ${r.exam_id}`;
+            const correct = r.correct_answers || 0;
+            const wrong = r.wrong_answers || 0;
+            const unattempted = r.unattempted || 0;
+            const totalQs = r.total_questions;
+            
+            const maxScore = totalQs * 4;
+            const obtainedScore = r.obtained_score; 
+            const percentage = maxScore > 0 ? ((obtainedScore / maxScore) * 100).toFixed(1) : 0;
+            
+            let badge = percentage < 50 ? `<span class='badge badge-danger'>Practice Needed</span>` : `<span class='badge badge-success'>Good</span>`;
+            
+            return `<tr>
+                <td><strong>${title}</strong></td>
+                <td>${totalQs}</td>
+                <td class="text-green">${correct}</td>
+                <td class="text-red">${wrong}</td>
+                <td class="text-gray">${unattempted}</td>
+                <td><strong>${obtainedScore}</strong> / ${maxScore} <br><small>(${percentage}%)</small></td>
+                <td>${badge}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    // ३. परीक्षा सुरू करणे (प्रश्नांची मांडणी)
+    async function startExam(examId) {
+        showToast("परीक्षा लोड होत आहे, कृपया थांबा...", "info");
+        
+        // Fetch Exam details
+        const { data: exam } = await supabaseClient.from('exams').select('*').eq('id', examId).single();
+        if(!exam) return;
+        
+        liveExamData = exam;
+        document.getElementById('live_exam_title').innerHTML = `${exam.exam_title} <span style="color: var(--danger); font-size: 14px;">(कृपया पेज रिफ्रेश करू नका)</span>`;
+
+        // Fetch Questions Logic
+        const { data: sample } = await supabaseClient.from(TABLE_NAME).select('*').limit(1);
+        if(!sample || sample.length === 0) {
+            alert("प्रश्न पेढीमध्ये प्रश्न आढळले नाहीत."); return;
+        }
+
+        // Identify exact column names (Case Sensitive handling)
+        const keys = Object.keys(sample[0]);
+        dbKeys = {
+            subj: keys.find(k => k.toLowerCase() === 'subject'),
+            chap: keys.find(k => k.toLowerCase() === 'chapter'),
+            q: keys.find(k => k.toLowerCase() === 'question'),
+            optA: keys.find(k => k.toLowerCase() === 'option a'),
+            optB: keys.find(k => k.toLowerCase() === 'option b'),
+            optC: keys.find(k => k.toLowerCase() === 'option c'),
+            optD: keys.find(k => k.toLowerCase() === 'option d'),
+            correctOpt: keys.find(k => k.toLowerCase() === 'correct option')
+        };
+
+        let query = supabaseClient.from(TABLE_NAME).select('*');
+        
+        if (exam.exam_type === 'Subject' && exam.subjects) {
+            const subjArray = exam.subjects.split(',').map(s => s.trim());
+            query = query.in(dbKeys.subj, subjArray);
+        } else if (exam.exam_type === 'Chapter' && exam.chapters) {
+            const chapArray = exam.chapters.split(',').map(s => s.trim());
+            query = query.in(dbKeys.chap, chapArray);
+        }
+
+        const { data: questionsData, error } = await query.limit(500); // Fetch max 500 to shuffle
+        
+        if(error || !questionsData || questionsData.length === 0) {
+            alert("या परीक्षेसाठी योग्य प्रश्न सापडले नाहीत."); return;
+        }
+
+        // Shuffle array and slice to total_questions required by admin
+        liveQuestions = questionsData.sort(() => 0.5 - Math.random()).slice(0, exam.total_questions);
+
+        renderExamUI();
+
+        // Switch Tabs visually
+        document.getElementById('main_tabs').classList.add('hidden');
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.getElementById('tab-live-exam').classList.add('active');
+        document.getElementById('tab-live-exam').classList.remove('hidden');
+    }
+
+    // ४. प्रश्न स्क्रीनवर दाखवणे
+    function renderExamUI() {
+        const container = document.getElementById('questions_container');
+        let html = '';
+
+        liveQuestions.forEach((q, index) => {
+            const qNum = index + 1;
+            html += `
+            <div class="question-box">
+                <div class="q-text">प्र. ${qNum}: ${q[dbKeys.q]}</div>
+                <div class="options-grid">
+                    <label class="option-label"><input type="radio" name="q_${index}" value="A"> (A) ${q[dbKeys.optA]}</label>
+                    <label class="option-label"><input type="radio" name="q_${index}" value="B"> (B) ${q[dbKeys.optB]}</label>
+                    <label class="option-label"><input type="radio" name="q_${index}" value="C"> (C) ${q[dbKeys.optC]}</label>
+                    <label class="option-label"><input type="radio" name="q_${index}" value="D"> (D) ${q[dbKeys.optD]}</label>
+                </div>
+            </div>`;
+        });
+
+        container.innerHTML = html;
+    }
+
+    // ५. परीक्षा सबमिट करणे आणि पेपर तपासणे (+4, -1, 0)
+    async function submitExam() {
+        const confirmSubmit = confirm("तुम्हाला खात्री आहे की तुम्ही परीक्षा सबमिट करू इच्छिता?");
+        if(!confirmSubmit) return;
+
+        const btn = document.getElementById('submit_exam_btn');
+        btn.innerText = "तपासणी सुरू आहे...";
+        btn.disabled = true;
+
+        let correct = 0, wrong = 0, unattempted = 0;
+
+        liveQuestions.forEach((q, index) => {
+            const selected = document.querySelector(`input[name="q_${index}"]:checked`);
+            if (!selected) {
+                unattempted++;
+            } else {
+                const userAns = selected.value; // "A", "B", "C", "D"
+                let actualAnsStr = String(q[dbKeys.correctOpt]).trim().toUpperCase();
+                
+                // If correct option in DB is exactly "A" or contains "A"
+                if (actualAnsStr === userAns || actualAnsStr.startsWith(userAns)) {
+                    correct++;
+                } else {
+                    wrong++;
+                }
+            }
+        });
+
+        // Calculate final score
+        const obtainedScore = (correct * 4) - (wrong * 1);
+
+        // Save to Supabase results table
+        const { error } = await supabaseClient.from('results').insert([{
+            student_id: currentStudent.id,
+            exam_id: liveExamData.id,
+            total_questions: liveQuestions.length,
+            correct_answers: correct,
+            wrong_answers: wrong,
+            unattempted: unattempted,
+            obtained_score: obtainedScore
+        }]);
+
+        btn.innerText = "परीक्षा सबमिट करा";
+        btn.disabled = false;
+
+        if (error) {
+            showToast("निकाल सेव्ह करताना अडचण आली: " + error.message, "error");
+        } else {
+            showToast("परीक्षा यशस्वीरीत्या पूर्ण झाली!", "success");
+            
+            // Hide live exam tab, show main tabs and go to results
+            document.getElementById('tab-live-exam').classList.add('hidden');
+            document.getElementById('tab-live-exam').classList.remove('active');
+            document.getElementById('main_tabs').classList.remove('hidden');
+            
+            openTab('tab-results'); // Redirect to scorecards
+        }
+    }
+
+    async function logout() { 
+        await supabaseClient.auth.signOut(); 
+        window.location.href = "index.html"; 
+    }
+
+    // Start
+    checkStudent();
+</script>
+</body>
+</html>
