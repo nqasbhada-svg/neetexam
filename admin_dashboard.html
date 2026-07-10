@@ -15,11 +15,15 @@
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
         .approve-btn { background: #28a745; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 3px; }
-        input, select { width: 90%; padding: 8px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        select[multiple] { height: 100px; } 
-        .submit-btn { background: #007bff; color: white; border: none; padding: 10px; width: 100%; cursor: pointer; border-radius: 4px; margin-top: 10px; }
+        input[type="text"], input[type="number"], input[type="datetime-local"], select { width: 90%; padding: 8px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .submit-btn { background: #007bff; color: white; border: none; padding: 10px; width: 100%; cursor: pointer; border-radius: 4px; margin-top: 10px; font-size: 16px; }
         .hidden { display: none; }
-        .small-text { font-size: 12px; color: gray; margin: 0; }
+        
+        /* चेकबॉक्ससाठी नवीन डिझाईन */
+        .checkbox-group { max-height: 150px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; border-radius: 4px; margin-top: 5px; background-color: #fafafa; }
+        .checkbox-item { margin-bottom: 8px; display: flex; align-items: center; cursor: pointer; }
+        .checkbox-item input { margin-right: 10px; width: auto; cursor: pointer; transform: scale(1.2); }
+        .checkbox-item label { cursor: pointer; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -48,7 +52,7 @@
 
         <div class="box">
             <h3>नवीन परीक्षा तयार करा</h3>
-            <input type="text" id="exam_title" placeholder="परीक्षेचे नाव (उदा. Physics Mock Test 1)">
+            <input type="text" id="exam_title" placeholder="परीक्षेचे नाव (उदा. Biology Mock Test)">
             
             <select id="exam_type" onchange="toggleFilters()">
                 <option value="Monthly">मासिक (Monthly) - सर्व सिलॅबस</option>
@@ -58,15 +62,13 @@
             </select>
             
             <div id="subject_box" class="hidden">
-                <label>विषय निवडा:</label>
-                <p class="small-text">(एकापेक्षा जास्त निवडण्यासाठी Ctrl दाबून ठेवा)</p>
-                <select id="exam_subjects" multiple onchange="fetchChapters()"></select>
+                <label style="font-weight: bold;">विषय निवडा (एकापेक्षा जास्त निवडू शकता):</label>
+                <div id="exam_subjects" class="checkbox-group"></div>
             </div>
 
             <div id="chapter_box" class="hidden">
-                <label>चाप्टर निवडा:</label>
-                <p class="small-text">(एकापेक्षा जास्त निवडण्यासाठी Ctrl दाबून ठेवा)</p>
-                <select id="exam_chapters" multiple></select>
+                <label style="font-weight: bold;">चाप्टर निवडा (एकापेक्षा जास्त निवडू शकता):</label>
+                <div id="exam_chapters" class="checkbox-group"></div>
             </div>
 
             <input type="number" id="total_questions" placeholder="एकूण प्रश्न संख्या">
@@ -82,10 +84,8 @@
     const SUPABASE_KEY = 'sb_publishable_6xnlWswPyQ_BbzKySdHGAw_waSsMuf0';
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // तुमच्या Supabase मधील मुख्य प्रश्नांच्या टेबलचे नाव
     const TABLE_NAME = 'NEET QUESTION BANK';
 
-    // १. पेज लोड झाल्यावर ॲडमिन आहे की नाही ते तपासणे
     async function checkAdmin() {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session) { window.location.href = "index.html"; return; }
@@ -98,11 +98,10 @@
             window.location.href = "index.html";
         } else {
             fetchPendingStudents();
-            fetchSubjects(); // पेज लोड झाल्यावर विषय आणणे
+            fetchSubjects(); 
         }
     }
 
-    // २. प्रलंबित विद्यार्थ्यांची यादी आणणे
     async function fetchPendingStudents() {
         const { data, error } = await supabaseClient.from('profiles').select('*').eq('role', 'student').eq('is_active', false);
         const tbody = document.getElementById('students-list');
@@ -123,18 +122,14 @@
         });
     }
 
-    // ३. विद्यार्थ्याला ॲक्टिव्हेट करणे
     async function approveStudent(studentId) {
         const { error } = await supabaseClient.from('profiles').update({ is_active: true }).eq('id', studentId);
         if (!error) {
             alert("विद्यार्थी यशस्वीरीत्या ॲक्टिव्हेट झाला!");
             fetchPendingStudents();
-        } else {
-            alert("चूक: " + error.message);
         }
     }
 
-    // ४. परीक्षेच्या प्रकारानुसार बॉक्सेस दाखवणे/लपवणे
     function toggleFilters() {
         const type = document.getElementById('exam_type').value;
         const subjectBox = document.getElementById('subject_box');
@@ -152,38 +147,37 @@
         }
     }
 
-// ५. डेटाबेसमधून युनिक विषय (Subjects) आणणे
+    // चेकबॉक्सद्वारे विषय लोड करणे
     async function fetchSubjects() {
-        const { data, error } = await supabaseClient.from(TABLE_NAME).select('*').limit(1); // कोणताही एक रेकॉर्ड आणून कॉलमची नावे तपासणे
+        const { data, error } = await supabaseClient.from(TABLE_NAME).select('*').limit(1);
         
-        if (error) {
-            console.error("Error connecting to table:", error);
-            alert("टेबलशी कनेक्ट होताना अडचण येत आहे. कृपया TABLE_NAME तपासा.");
-            return;
-        }
-
         if (data && data.length > 0) {
-            // कॉलमचे नाव 'Subject' आहे की 'subject' हे शोधणे
             const isCapital = data[0].hasOwnProperty('Subject');
             const colName = isCapital ? 'Subject' : 'subject';
-
             const { data: subjectData } = await supabaseClient.from(TABLE_NAME).select(colName);
             
             if (subjectData) {
                 const uniqueSubjects = [...new Set(subjectData.map(q => q[colName]).filter(Boolean))];
-                const subjSelect = document.getElementById('exam_subjects');
-                subjSelect.innerHTML = uniqueSubjects.map(s => `<option value="${s}">${s}</option>`).join('');
+                const subjContainer = document.getElementById('exam_subjects');
+                
+                subjContainer.innerHTML = uniqueSubjects.map((s, index) => `
+                    <div class="checkbox-item">
+                        <input type="checkbox" value="${s}" id="subj_${index}" onchange="fetchChapters()">
+                        <label for="subj_${index}">${s}</label>
+                    </div>
+                `).join('');
             }
         }
     }
 
-    // ६. निवडलेल्या विषयांनुसार चाप्टर्स (Chapters) आणणे
+    // निवडलेल्या चेकबॉक्सनुसार चाप्टर्स लोड करणे
     async function fetchChapters() {
-        const selectedSubjects = Array.from(document.getElementById('exam_subjects').selectedOptions).map(opt => opt.value);
-        const chapSelect = document.getElementById('exam_chapters');
+        // कोणते विषय चेक केले आहेत ते तपासणे
+        const selectedSubjects = Array.from(document.querySelectorAll('#exam_subjects input:checked')).map(cb => cb.value);
+        const chapContainer = document.getElementById('exam_chapters');
         
         if (selectedSubjects.length === 0) {
-            chapSelect.innerHTML = "";
+            chapContainer.innerHTML = "";
             return;
         }
 
@@ -200,10 +194,17 @@
                 
             if (chapterData) {
                 const uniqueChapters = [...new Set(chapterData.map(q => q[colChap]).filter(Boolean))];
-                chapSelect.innerHTML = uniqueChapters.map(c => `<option value="${c}">${c}</option>`).join('');
+                
+                chapContainer.innerHTML = uniqueChapters.map((c, index) => `
+                    <div class="checkbox-item">
+                        <input type="checkbox" value="${c}" id="chap_${index}">
+                        <label for="chap_${index}">${c}</label>
+                    </div>
+                `).join('');
             }
         }
-    }    // ७. परीक्षा तयार करताना डेटा सेव्ह करणे
+    }
+
     async function createExam() {
         const title = document.getElementById('exam_title').value;
         const type = document.getElementById('exam_type').value;
@@ -211,9 +212,9 @@
         const validUntil = document.getElementById('valid_until').value;
         const msgBox = document.getElementById('exam-msg');
 
-        // मल्टी-सिलेक्ट मधून डेटा काढणे (स्वल्पविरामाने जोडलेले)
-        const selectedSubjects = Array.from(document.getElementById('exam_subjects').selectedOptions).map(opt => opt.value).join(', ');
-        const selectedChapters = Array.from(document.getElementById('exam_chapters').selectedOptions).map(opt => opt.value).join(', ');
+        // चेक केलेल्या चेकबॉक्सची माहिती गोळा करणे
+        const selectedSubjects = Array.from(document.querySelectorAll('#exam_subjects input:checked')).map(cb => cb.value).join(', ');
+        const selectedChapters = Array.from(document.querySelectorAll('#exam_chapters input:checked')).map(cb => cb.value).join(', ');
 
         if (!title || !questions || !validUntil) {
             msgBox.style.color = "red";
@@ -241,21 +242,23 @@
         } else {
             msgBox.style.color = "green";
             msgBox.innerText = "परीक्षा यशस्वीरीत्या जनरेट झाली!";
+            
+            // फॉर्म रिकामा करणे
             document.getElementById('exam_title').value = "";
             document.getElementById('total_questions').value = "";
             document.getElementById('valid_until').value = "";
-            document.getElementById('exam_subjects').selectedIndex = -1;
+            
+            // सर्व चेकबॉक्स अनचेक करणे
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
             document.getElementById('exam_chapters').innerHTML = ""; 
         }
     }
 
-    // ८. लॉगआउट करणे
     async function logout() {
         await supabaseClient.auth.signOut();
         window.location.href = "index.html";
     }
 
-    // स्क्रिप्ट सुरू करणे
     checkAdmin();
 </script>
 </body>
