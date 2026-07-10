@@ -9,83 +9,65 @@
     
     <style>
         :root {
-            --primary: #4F46E5;
-            --primary-hover: #4338CA;
-            --success: #10B981;
-            --success-hover: #059669;
-            --danger: #EF4444;
-            --danger-hover: #DC2626;
-            --bg-color: #F3F4F6;
-            --card-bg: #FFFFFF;
-            --text-main: #1F2937;
-            --text-muted: #6B7280;
+            --primary: #4F46E5; --primary-hover: #4338CA;
+            --success: #10B981; --success-hover: #059669;
+            --danger: #EF4444; --danger-hover: #DC2626;
+            --bg-color: #F3F4F6; --card-bg: #FFFFFF;
+            --text-main: #1F2937; --text-muted: #6B7280;
             --border: #E5E7EB;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); line-height: 1.6; display: flex; flex-direction: column; height: 100vh; }
 
-        body { background-color: var(--bg-color); color: var(--text-main); line-height: 1.6; }
-
-        /* Navbar */
-        .navbar { background: #111827; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        .navbar h2 { font-size: 20px; font-weight: 600; letter-spacing: 0.5px; }
-        .logout-btn { background: var(--danger); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500; transition: 0.2s; }
+        /* Navbar & Tabs */
+        .navbar { background: #111827; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        .navbar h2 { font-size: 20px; font-weight: 600; }
+        .logout-btn { background: var(--danger); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; transition: 0.2s; }
         .logout-btn:hover { background: var(--danger-hover); }
 
-        /* Main Container */
-        .container { display: flex; flex-wrap: wrap; gap: 24px; padding: 30px; max-width: 1400px; margin: 0 auto; }
-        
-        /* Cards */
-        .card { background: var(--card-bg); padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); flex: 1; min-width: 320px; border: 1px solid var(--border); }
-        .card-header { font-size: 18px; font-weight: 600; margin-bottom: 20px; color: var(--text-main); border-bottom: 2px solid var(--border); padding-bottom: 10px; }
+        .tab-menu { background: #1F2937; display: flex; padding: 0 20px; }
+        .tab-btn { background: none; color: #9CA3AF; border: none; padding: 12px 20px; cursor: pointer; font-size: 15px; font-weight: 500; border-bottom: 3px solid transparent; transition: 0.3s; }
+        .tab-btn:hover { color: white; }
+        .tab-btn.active { color: white; border-bottom-color: var(--primary); }
 
-        /* Table Design */
+        /* Main Container & Sections */
+        .container { padding: 30px; max-width: 1400px; margin: 0 auto; width: 100%; overflow-y: auto; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .flex-row { display: flex; flex-wrap: wrap; gap: 24px; }
+        .card { background: var(--card-bg); padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); flex: 1; min-width: 320px; border: 1px solid var(--border); margin-bottom: 24px;}
+        .card-header { font-size: 18px; font-weight: 600; margin-bottom: 20px; border-bottom: 2px solid var(--border); padding-bottom: 10px; }
+
+        /* Tables */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border); font-size: 14px; }
-        th { background-color: #F9FAFB; font-weight: 600; color: var(--text-muted); text-transform: uppercase; font-size: 12px; letter-spacing: 0.05em; }
-        tr:hover { background-color: #F9FAFB; }
-        .approve-btn { background: var(--success); color: white; border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-size: 12px; font-weight: 600; transition: 0.2s; }
-        .approve-btn:hover { background: var(--success-hover); }
+        th { background-color: #F9FAFB; font-weight: 600; color: var(--text-muted); font-size: 12px; text-transform: uppercase; }
+        .badge { padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .badge-success { background: #D1FAE5; color: #065F46; }
+        .badge-danger { background: #FEE2E2; color: #991B1B; }
 
-        /* Form Elements */
+        /* Forms */
         .form-group { margin-bottom: 16px; }
-        label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; color: var(--text-main); }
-        input[type="text"], input[type="number"], input[type="datetime-local"], select { 
-            width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px; 
-            font-size: 14px; color: var(--text-main); transition: 0.2s; outline: none; background: #fff;
-        }
-        input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
-        
-        /* Modern Checkbox Group */
-        .checkbox-container { max-height: 200px; overflow-y: auto; border: 1px solid var(--border); padding: 12px; border-radius: 6px; background-color: #F9FAFB; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
-        
-        .checkbox-item { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; display: flex; align-items: center; cursor: pointer; transition: 0.2s; }
-        .checkbox-item:hover { border-color: var(--primary); background: #EEF2FF; }
-        
-        .checkbox-item input { margin-right: 10px; cursor: pointer; width: 16px; height: 16px; accent-color: var(--primary); }
-        .checkbox-item label { cursor: pointer; font-size: 13px; font-weight: 500; margin: 0; width: 100%; }
+        label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+        input, select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; }
+        .submit-btn, .approve-btn { background: var(--primary); color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 6px; font-weight: 600; }
+        .approve-btn { background: var(--success); font-size: 12px; padding: 6px 12px; }
 
-        /* Action Button */
-        .submit-btn { background: var(--primary); color: white; border: none; padding: 12px; width: 100%; cursor: pointer; border-radius: 6px; margin-top: 10px; font-size: 15px; font-weight: 600; transition: 0.2s; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2); }
-        .submit-btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
-        .submit-btn:active { transform: translateY(0); }
+        /* Checkboxes */
+        .checkbox-container { max-height: 200px; overflow-y: auto; border: 1px solid var(--border); padding: 12px; border-radius: 6px; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+        .checkbox-item { border: 1px solid var(--border); border-radius: 6px; padding: 8px; display: flex; align-items: center; cursor: pointer; }
+        .checkbox-item:hover { border-color: var(--primary); }
+        .checkbox-item input { margin-right: 10px; }
 
-        /* Helpers */
-        .hidden { display: none !important; }
-        .small-text { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; font-weight: normal; display: block; }
-        
-        /* Custom Toast Notification */
-        #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 6px; padding: 16px; position: fixed; z-index: 1000; right: 30px; top: 30px; font-size: 14px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); opacity: 0; transition: opacity 0.3s, top 0.3s; }
+        /* Toast */
+        #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 6px; padding: 16px; position: fixed; right: 30px; top: 30px; z-index: 1000; opacity: 0; transition: 0.3s; }
         #toast.show { visibility: visible; opacity: 1; top: 50px; }
         #toast.success { background-color: var(--success); }
         #toast.error { background-color: var(--danger); }
-        #toast.info { background-color: var(--primary); }
-
-        /* Scrollbar styling for a cleaner look */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -95,64 +77,90 @@
         <button class="logout-btn" onclick="logout()">लॉगआउट करा</button>
     </div>
 
+    <div class="tab-menu">
+        <button class="tab-btn active" onclick="openTab('tab-dashboard')">🏠 डॅशबोर्ड</button>
+        <button class="tab-btn" onclick="openTab('tab-students')">👥 विद्यार्थी</button>
+        <button class="tab-btn" onclick="openTab('tab-exams')">📝 परीक्षा यादी</button>
+        <button class="tab-btn" onclick="openTab('tab-reports')">📊 प्रगती पुस्तक</button>
+    </div>
+
     <div class="container">
-        <div class="card">
-            <h3 class="card-header">प्रलंबित विद्यार्थी (Pending Approvals)</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>नाव</th>
-                        <th>मोबाईल नंबर</th>
-                        <th>कृती</th>
-                    </tr>
-                </thead>
-                <tbody id="students-list">
-                    <tr><td colspan="3" style="text-align: center; color: #6B7280;">लोड होत आहे...</td></tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="card">
-            <h3 class="card-header">नवीन परीक्षा तयार करा</h3>
-            
-            <div class="form-group">
-                <label>परीक्षेचे नाव</label>
-                <input type="text" id="exam_title" placeholder="उदा. Biology Weekly Mock Test">
-            </div>
-            
-            <div class="form-group">
-                <label>परीक्षेचा प्रकार</label>
-                <select id="exam_type" onchange="toggleFilters()">
-                    <option value="Monthly">मासिक (Monthly) - सर्व सिलॅबस</option>
-                    <option value="Yearly">वार्षिक (Yearly) - सर्व सिलॅबस</option>
-                    <option value="Subject">विषयवार (Subject-wise)</option>
-                    <option value="Chapter">चाप्टर-निहाय (Chapter-wise)</option>
-                </select>
-            </div>
-            
-            <div id="subject_box" class="form-group hidden">
-                <label>विषय निवडा <span class="small-text">(एकापेक्षा जास्त निवडू शकता)</span></label>
-                <div id="exam_subjects" class="checkbox-container"></div>
-            </div>
-
-            <div id="chapter_box" class="form-group hidden">
-                <label>चाप्टर निवडा <span class="small-text">(एकापेक्षा जास्त निवडू शकता)</span></label>
-                <div id="exam_chapters" class="checkbox-container"></div>
-            </div>
-
-            <div style="display: flex; gap: 15px;">
-                <div class="form-group" style="flex: 1;">
-                    <label>एकूण प्रश्न</label>
-                    <input type="number" id="total_questions" placeholder="प्रश्नांची संख्या">
+        
+        <div id="tab-dashboard" class="tab-content active">
+            <div class="flex-row">
+                <div class="card">
+                    <h3 class="card-header">प्रलंबित विद्यार्थी (Pending Approvals)</h3>
+                    <table>
+                        <thead><tr><th>नाव</th><th>मोबाईल नंबर</th><th>कृती</th></tr></thead>
+                        <tbody id="pending-students-list"><tr><td colspan="3">लोड होत आहे...</td></tr></tbody>
+                    </table>
                 </div>
-                <div class="form-group" style="flex: 1;">
-                    <label>कधीपर्यंत ऍक्टिव्ह राहील?</label>
-                    <input type="datetime-local" id="valid_until">
+
+                <div class="card">
+                    <h3 class="card-header">नवीन परीक्षा तयार करा</h3>
+                    <div class="form-group"><label>परीक्षेचे नाव</label><input type="text" id="exam_title"></div>
+                    <div class="form-group"><label>प्रकार</label>
+                        <select id="exam_type" onchange="toggleFilters()">
+                            <option value="Monthly">मासिक (सर्व सिलॅबस)</option>
+                            <option value="Subject">विषयवार</option>
+                            <option value="Chapter">चाप्टर-निहाय</option>
+                        </select>
+                    </div>
+                    <div id="subject_box" class="form-group hidden">
+                        <label>विषय निवडा</label><div id="exam_subjects" class="checkbox-container"></div>
+                    </div>
+                    <div id="chapter_box" class="form-group hidden">
+                        <label>चाप्टर निवडा</label><div id="exam_chapters" class="checkbox-container"></div>
+                    </div>
+                    <div class="flex-row" style="gap: 15px;">
+                        <div class="form-group" style="flex:1;"><label>एकूण प्रश्न</label><input type="number" id="total_questions"></div>
+                        <div class="form-group" style="flex:1;"><label>शेवटची तारीख</label><input type="datetime-local" id="valid_until"></div>
+                    </div>
+                    <button class="submit-btn" style="width:100%;" onclick="createExam()">परीक्षा जनरेट करा</button>
                 </div>
             </div>
-            
-            <button class="submit-btn" onclick="createExam()" id="submit_btn">परीक्षा जनरेट करा</button>
         </div>
+
+        <div id="tab-students" class="tab-content">
+            <div class="card">
+                <h3 class="card-header">ॲक्टिव्ह विद्यार्थ्यांची यादी</h3>
+                <table>
+                    <thead><tr><th>नाव</th><th>मोबाईल नंबर</th><th>स्टेटस</th></tr></thead>
+                    <tbody id="active-students-list"><tr><td colspan="3">लोड होत आहे...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="tab-exams" class="tab-content">
+            <div class="card">
+                <h3 class="card-header">तयार केलेल्या परीक्षा</h3>
+                <table>
+                    <thead><tr><th>परीक्षेचे नाव</th><th>प्रकार</th><th>एकूण प्रश्न</th><th>शेवटची वेळ</th></tr></thead>
+                    <tbody id="exams-list"><tr><td colspan="4">लोड होत आहे...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="tab-reports" class="tab-content">
+            <div class="card">
+                <h3 class="card-header">विद्यार्थ्यांचे निकाल आणि कमकुवत विषय</h3>
+                <div class="form-group">
+                    <label>विद्यार्थी निवडा:</label>
+                    <select id="report_student_select" onchange="fetchStudentScorecard()">
+                        <option value="">-- विद्यार्थी निवडा --</option>
+                    </select>
+                </div>
+                
+                <div id="scorecard_area" class="hidden">
+                    <h4>निकाल:</h4>
+                    <table>
+                        <thead><tr><th>परीक्षा</th><th>एकूण गुण</th><th>मिळालेले गुण</th><th>टक्केवारी</th><th>शेरा</th></tr></thead>
+                        <tbody id="scorecard-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <div id="toast"></div>
@@ -161,194 +169,153 @@
     const SUPABASE_URL = 'https://rabujuzuycdkxalyelcd.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_6xnlWswPyQ_BbzKySdHGAw_waSsMuf0';
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
     const TABLE_NAME = 'NEET QUESTION BANK';
 
-    // Custom Toast Notification Function
-    function showToast(message, type = 'info') {
+    function showToast(message, type = 'success') {
         const toast = document.getElementById("toast");
         toast.className = "show " + type;
         toast.innerText = message;
-        setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3500);
+        setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3500);
+    }
+
+    function openTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        event.currentTarget.classList.add('active');
+        
+        if(tabId === 'tab-students') fetchActiveStudents();
+        if(tabId === 'tab-exams') fetchExamsList();
+        if(tabId === 'tab-reports') loadStudentsDropdown();
     }
 
     async function checkAdmin() {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session) { window.location.href = "index.html"; return; }
-
-        const userId = session.user.id;
-        const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', userId).single();
-
-        if (!profile || profile.role !== 'admin') {
-            showToast("तुम्हाला हे पेज पाहण्याचा अधिकार नाही!", "error");
-            setTimeout(() => { window.location.href = "index.html"; }, 1500);
-        } else {
-            fetchPendingStudents();
-            fetchSubjects(); 
-        }
+        const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', session.user.id).single();
+        if (!profile || profile.role !== 'admin') { window.location.href = "index.html"; } 
+        else { fetchPendingStudents(); fetchSubjects(); }
     }
 
+    // --- १. Pending Students ---
     async function fetchPendingStudents() {
         const { data, error } = await supabaseClient.from('profiles').select('*').eq('role', 'student').eq('is_active', false);
-        const tbody = document.getElementById('students-list');
-        tbody.innerHTML = "";
+        const tbody = document.getElementById('pending-students-list');
+        if (error || data.length === 0) { tbody.innerHTML = "<tr><td colspan='3'>सध्या कोणतेही विद्यार्थी प्रलंबित नाहीत.</td></tr>"; return; }
+        tbody.innerHTML = data.map(s => `<tr><td>${s.name}</td><td>${s.mobile_number}</td><td><button class='approve-btn' onclick="approveStudent('${s.id}')">Activate</button></td></tr>`).join('');
+    }
 
-        if (error || data.length === 0) {
-            tbody.innerHTML = "<tr><td colspan='3' style='text-align:center; color:#6B7280;'>सध्या कोणतेही नवीन विद्यार्थी प्रलंबित नाहीत.</td></tr>";
+    async function approveStudent(id) {
+        await supabaseClient.from('profiles').update({ is_active: true }).eq('id', id);
+        showToast("विद्यार्थी ॲक्टिव्हेट झाला!");
+        fetchPendingStudents();
+    }
+
+    // --- २. Active Students List ---
+    async function fetchActiveStudents() {
+        const { data } = await supabaseClient.from('profiles').select('*').eq('role', 'student').eq('is_active', true);
+        const tbody = document.getElementById('active-students-list');
+        if (!data || data.length === 0) { tbody.innerHTML = "<tr><td colspan='3'>कोणतेही ॲक्टिव्ह विद्यार्थी नाहीत.</td></tr>"; return; }
+        tbody.innerHTML = data.map(s => `<tr><td><strong>${s.name}</strong></td><td>${s.mobile_number}</td><td><span class='badge badge-success'>Active</span></td></tr>`).join('');
+    }
+
+    // --- ३. Exams List ---
+    async function fetchExamsList() {
+        const { data } = await supabaseClient.from('exams').select('*').order('id', { ascending: false });
+        const tbody = document.getElementById('exams-list');
+        if (!data || data.length === 0) { tbody.innerHTML = "<tr><td colspan='4'>कोणत्याही परीक्षा नाहीत.</td></tr>"; return; }
+        tbody.innerHTML = data.map(e => {
+            const dateStr = e.valid_until ? new Date(e.valid_until).toLocaleString('en-IN') : 'N/A';
+            return `<tr><td><strong>${e.exam_title}</strong></td><td>${e.exam_type}</td><td>${e.total_questions}</td><td>${dateStr}</td></tr>`;
+        }).join('');
+    }
+
+    // --- ४. Score Cards & Weak Sections ---
+    async function loadStudentsDropdown() {
+        const { data } = await supabaseClient.from('profiles').select('id, name').eq('role', 'student').eq('is_active', true);
+        const select = document.getElementById('report_student_select');
+        select.innerHTML = `<option value="">-- विद्यार्थी निवडा --</option>` + data.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    }
+
+    async function fetchStudentScorecard() {
+        const studentId = document.getElementById('report_student_select').value;
+        const area = document.getElementById('scorecard_area');
+        const tbody = document.getElementById('scorecard-list');
+        if(!studentId) { area.classList.add('hidden'); return; }
+
+        area.classList.remove('hidden');
+        tbody.innerHTML = "<tr><td colspan='5'>निकाल शोधत आहे...</td></tr>";
+
+        // विद्यार्थ्याचे निकाल आणणे (Results table अद्याप रिकामे असेल तर मेसेज दाखवेल)
+        const { data: results } = await supabaseClient.from('results').select('*').eq('student_id', studentId);
+        
+        if(!results || results.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='5' style='color:red;'>या विद्यार्थ्याने अद्याप कोणतीही परीक्षा दिलेली नाही.</td></tr>";
             return;
         }
 
-        data.forEach(student => {
-            let row = `<tr>
-                <td><strong>${student.name}</strong></td>
-                <td>${student.mobile_number}</td>
-                <td><button class='approve-btn' onclick="approveStudent('${student.id}')">Activate</button></td>
-            </tr>`;
-            tbody.innerHTML += row;
-        });
+        // निकालाची गणना आणि Weak Section लॉजिक
+        tbody.innerHTML = results.map(r => {
+            const percentage = ((r.obtained_score / r.total_score) * 100).toFixed(1);
+            let badge = percentage < 50 ? `<span class='badge badge-danger'>Weak Section (Practice Needed)</span>` : `<span class='badge badge-success'>Good</span>`;
+            return `<tr><td>Exam ID: ${r.exam_id}</td><td>${r.total_score}</td><td>${r.obtained_score}</td><td>${percentage}%</td><td>${badge}</td></tr>`;
+        }).join('');
     }
 
-    async function approveStudent(studentId) {
-        const { error } = await supabaseClient.from('profiles').update({ is_active: true }).eq('id', studentId);
-        if (!error) {
-            showToast("विद्यार्थी यशस्वीरीत्या ॲक्टिव्हेट झाला!", "success");
-            fetchPendingStudents();
-        } else {
-            showToast("चूक: " + error.message, "error");
-        }
-    }
-
+    // --- Create Exam Logic (Old but fully functional) ---
     function toggleFilters() {
         const type = document.getElementById('exam_type').value;
-        const subjectBox = document.getElementById('subject_box');
-        const chapterBox = document.getElementById('chapter_box');
-
-        if (type === 'Subject') {
-            subjectBox.classList.remove('hidden');
-            chapterBox.classList.add('hidden');
-        } else if (type === 'Chapter') {
-            subjectBox.classList.remove('hidden');
-            chapterBox.classList.remove('hidden');
-        } else {
-            subjectBox.classList.add('hidden');
-            chapterBox.classList.add('hidden');
-        }
+        document.getElementById('subject_box').classList.toggle('hidden', type !== 'Subject' && type !== 'Chapter');
+        document.getElementById('chapter_box').classList.toggle('hidden', type !== 'Chapter');
     }
 
     async function fetchSubjects() {
-        const { data, error } = await supabaseClient.from(TABLE_NAME).select('*').limit(1);
-        
+        const { data } = await supabaseClient.from(TABLE_NAME).select('*').limit(1);
         if (data && data.length > 0) {
-            const isCapital = data[0].hasOwnProperty('Subject');
-            const colName = isCapital ? 'Subject' : 'subject';
+            const colName = data[0].hasOwnProperty('Subject') ? 'Subject' : 'subject';
             const { data: subjectData } = await supabaseClient.from(TABLE_NAME).select(colName);
-            
-            if (subjectData) {
-                const uniqueSubjects = [...new Set(subjectData.map(q => q[colName]).filter(Boolean))];
-                const subjContainer = document.getElementById('exam_subjects');
-                
-                subjContainer.innerHTML = uniqueSubjects.map((s, index) => `
-                    <div class="checkbox-item" onclick="document.getElementById('subj_${index}').click();">
-                        <input type="checkbox" value="${s}" id="subj_${index}" onclick="event.stopPropagation(); fetchChapters();" onchange="fetchChapters()">
-                        <label for="subj_${index}">${s}</label>
-                    </div>
-                `).join('');
-            }
+            const uniqueSubjects = [...new Set(subjectData.map(q => q[colName]).filter(Boolean))];
+            document.getElementById('exam_subjects').innerHTML = uniqueSubjects.map((s, i) => `
+                <div class="checkbox-item" onclick="document.getElementById('subj_${i}').click();">
+                    <input type="checkbox" value="${s}" id="subj_${i}" onclick="event.stopPropagation(); fetchChapters();" onchange="fetchChapters()">
+                    <label>${s}</label>
+                </div>`).join('');
         }
     }
 
     async function fetchChapters() {
-        const selectedSubjects = Array.from(document.querySelectorAll('#exam_subjects input:checked')).map(cb => cb.value);
-        const chapContainer = document.getElementById('exam_chapters');
-        
-        if (selectedSubjects.length === 0) {
-            chapContainer.innerHTML = "";
-            return;
-        }
-
-        const { data: sampleData } = await supabaseClient.from(TABLE_NAME).select('*').limit(1);
-        
-        if (sampleData && sampleData.length > 0) {
-            const isCapitalSubj = sampleData[0].hasOwnProperty('Subject');
-            const isCapitalChap = sampleData[0].hasOwnProperty('Chapter');
-            
-            const colSubj = isCapitalSubj ? 'Subject' : 'subject';
-            const colChap = isCapitalChap ? 'Chapter' : 'chapter';
-
-            const { data: chapterData } = await supabaseClient.from(TABLE_NAME).select(colChap).in(colSubj, selectedSubjects);
-                
-            if (chapterData) {
-                const uniqueChapters = [...new Set(chapterData.map(q => q[colChap]).filter(Boolean))];
-                
-                chapContainer.innerHTML = uniqueChapters.map((c, index) => `
-                    <div class="checkbox-item" onclick="document.getElementById('chap_${index}').click();">
-                        <input type="checkbox" value="${c}" id="chap_${index}" onclick="event.stopPropagation();">
-                        <label for="chap_${index}">${c}</label>
-                    </div>
-                `).join('');
-            }
+        const selected = Array.from(document.querySelectorAll('#exam_subjects input:checked')).map(cb => cb.value);
+        if (selected.length === 0) { document.getElementById('exam_chapters').innerHTML = ""; return; }
+        const { data } = await supabaseClient.from(TABLE_NAME).select('*').limit(1);
+        if (data && data.length > 0) {
+            const colSubj = data[0].hasOwnProperty('Subject') ? 'Subject' : 'subject';
+            const colChap = data[0].hasOwnProperty('Chapter') ? 'Chapter' : 'chapter';
+            const { data: chapData } = await supabaseClient.from(TABLE_NAME).select(colChap).in(colSubj, selected);
+            const uniqueChapters = [...new Set(chapData.map(q => q[colChap]).filter(Boolean))];
+            document.getElementById('exam_chapters').innerHTML = uniqueChapters.map((c, i) => `
+                <div class="checkbox-item" onclick="document.getElementById('chap_${i}').click();">
+                    <input type="checkbox" value="${c}" id="chap_${i}" onclick="event.stopPropagation();">
+                    <label>${c}</label>
+                </div>`).join('');
         }
     }
 
     async function createExam() {
         const title = document.getElementById('exam_title').value;
         const type = document.getElementById('exam_type').value;
-        const questions = document.getElementById('total_questions').value;
-        const validUntil = document.getElementById('valid_until').value;
-        const btn = document.getElementById('submit_btn');
+        const qCount = document.getElementById('total_questions').value;
+        const valid = document.getElementById('valid_until').value;
+        const subj = Array.from(document.querySelectorAll('#exam_subjects input:checked')).map(cb => cb.value).join(', ');
+        const chap = Array.from(document.querySelectorAll('#exam_chapters input:checked')).map(cb => cb.value).join(', ');
 
-        const selectedSubjects = Array.from(document.querySelectorAll('#exam_subjects input:checked')).map(cb => cb.value).join(', ');
-        const selectedChapters = Array.from(document.querySelectorAll('#exam_chapters input:checked')).map(cb => cb.value).join(', ');
+        if (!title || !qCount || !valid) { showToast("कृपया सर्व माहिती भरा.", "error"); return; }
 
-        if (!title || !questions || !validUntil) {
-            showToast("कृपया सर्व माहिती भरा.", "error");
-            return;
-        }
-
-        if (type === 'Subject' && !selectedSubjects) {
-            showToast("कृपया किमान एक विषय निवडा.", "error"); return;
-        }
-        if (type === 'Chapter' && !selectedChapters) {
-            showToast("कृपया किमान एक चाप्टर निवडा.", "error"); return;
-        }
-
-        btn.innerText = "सेव्ह होत आहे...";
-        btn.style.opacity = "0.7";
-        btn.disabled = true;
-
-        const { error } = await supabaseClient.from('exams').insert([
-            { 
-                exam_title: title, 
-                exam_type: type, 
-                total_questions: parseInt(questions), 
-                valid_until: validUntil,
-                subjects: type !== 'Monthly' && type !== 'Yearly' ? selectedSubjects : null,
-                chapters: type === 'Chapter' ? selectedChapters : null
-            }
-        ]);
-
-        btn.innerText = "परीक्षा जनरेट करा";
-        btn.style.opacity = "1";
-        btn.disabled = false;
-
-        if (error) {
-            showToast("चूक: " + error.message, "error");
-        } else {
-            showToast("परीक्षा यशस्वीरीत्या जनरेट झाली!", "success");
-            
-            document.getElementById('exam_title').value = "";
-            document.getElementById('total_questions').value = "";
-            document.getElementById('valid_until').value = "";
-            
-            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-            document.getElementById('exam_chapters').innerHTML = ""; 
-        }
+        await supabaseClient.from('exams').insert([{ exam_title: title, exam_type: type, total_questions: parseInt(qCount), valid_until: valid, subjects: subj, chapters: chap }]);
+        showToast("परीक्षा जनरेट झाली!");
+        document.getElementById('exam_title').value = ""; document.getElementById('total_questions').value = ""; document.getElementById('valid_until').value = "";
     }
 
-    async function logout() {
-        await supabaseClient.auth.signOut();
-        window.location.href = "index.html";
-    }
+    async function logout() { await supabaseClient.auth.signOut(); window.location.href = "index.html"; }
 
     checkAdmin();
 </script>
