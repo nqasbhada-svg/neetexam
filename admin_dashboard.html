@@ -152,23 +152,28 @@
         }
     }
 
-    // ५. डेटाबेसमधून युनिक विषय (Subjects) आणणे
+// ५. डेटाबेसमधून युनिक विषय (Subjects) आणणे
     async function fetchSubjects() {
-        const { data, error } = await supabaseClient.from(TABLE_NAME).select('Subject');
+        const { data, error } = await supabaseClient.from(TABLE_NAME).select('*').limit(1); // कोणताही एक रेकॉर्ड आणून कॉलमची नावे तपासणे
         
         if (error) {
-            console.error("Error fetching subjects:", error);
-            // जर 'Subject' ऐवजी 'subject' असेल तर Fallback
-            const fallback = await supabaseClient.from(TABLE_NAME).select('subject');
-            if (fallback.data) processSubjects(fallback.data, 'subject');
-        } else if (data) {
-            processSubjects(data, 'Subject');
+            console.error("Error connecting to table:", error);
+            alert("टेबलशी कनेक्ट होताना अडचण येत आहे. कृपया TABLE_NAME तपासा.");
+            return;
         }
 
-        function processSubjects(subjectData, columnName) {
-            const uniqueSubjects = [...new Set(subjectData.map(q => q[columnName]).filter(Boolean))];
-            const subjSelect = document.getElementById('exam_subjects');
-            subjSelect.innerHTML = uniqueSubjects.map(s => `<option value="${s}">${s}</option>`).join('');
+        if (data && data.length > 0) {
+            // कॉलमचे नाव 'Subject' आहे की 'subject' हे शोधणे
+            const isCapital = data[0].hasOwnProperty('Subject');
+            const colName = isCapital ? 'Subject' : 'subject';
+
+            const { data: subjectData } = await supabaseClient.from(TABLE_NAME).select(colName);
+            
+            if (subjectData) {
+                const uniqueSubjects = [...new Set(subjectData.map(q => q[colName]).filter(Boolean))];
+                const subjSelect = document.getElementById('exam_subjects');
+                subjSelect.innerHTML = uniqueSubjects.map(s => `<option value="${s}">${s}</option>`).join('');
+            }
         }
     }
 
@@ -182,23 +187,23 @@
             return;
         }
 
-        const { data, error } = await supabaseClient.from(TABLE_NAME).select('Chapter').in('Subject', selectedSubjects);
+        const { data: sampleData } = await supabaseClient.from(TABLE_NAME).select('*').limit(1);
+        
+        if (sampleData && sampleData.length > 0) {
+            const isCapitalSubj = sampleData[0].hasOwnProperty('Subject');
+            const isCapitalChap = sampleData[0].hasOwnProperty('Chapter');
             
-        if (error) {
-            console.error("Error fetching chapters:", error);
-            const fallback = await supabaseClient.from(TABLE_NAME).select('chapter').in('subject', selectedSubjects);
-            if (fallback.data) processChapters(fallback.data, 'chapter');
-        } else if (data) {
-            processChapters(data, 'Chapter');
-        }
+            const colSubj = isCapitalSubj ? 'Subject' : 'subject';
+            const colChap = isCapitalChap ? 'Chapter' : 'chapter';
 
-        function processChapters(chapterData, columnName) {
-            const uniqueChapters = [...new Set(chapterData.map(q => q[columnName]).filter(Boolean))];
-            chapSelect.innerHTML = uniqueChapters.map(c => `<option value="${c}">${c}</option>`).join('');
+            const { data: chapterData } = await supabaseClient.from(TABLE_NAME).select(colChap).in(colSubj, selectedSubjects);
+                
+            if (chapterData) {
+                const uniqueChapters = [...new Set(chapterData.map(q => q[colChap]).filter(Boolean))];
+                chapSelect.innerHTML = uniqueChapters.map(c => `<option value="${c}">${c}</option>`).join('');
+            }
         }
-    }
-
-    // ७. परीक्षा तयार करताना डेटा सेव्ह करणे
+    }    // ७. परीक्षा तयार करताना डेटा सेव्ह करणे
     async function createExam() {
         const title = document.getElementById('exam_title').value;
         const type = document.getElementById('exam_type').value;
