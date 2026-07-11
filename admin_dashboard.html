@@ -250,6 +250,41 @@
         </tr>`;
     }).join('');
 }
+    // --- परीक्षा डिलीट करण्यासाठी ---
+async function deleteExam(examId) {
+    if (!confirm("तुम्हाला खात्री आहे का की ही परीक्षा डिलीट करायची आहे?")) return;
+
+    const { error } = await supabaseClient.from('exams').delete().eq('id', examId);
+    if (error) {
+        showToast("चूक: " + error.message, "error");
+    } else {
+        showToast("परीक्षा डिलीट झाली!", "success");
+        fetchExamsList(); // लिस्ट रिफ्रेश करण्यासाठी
+    }
+}
+
+// --- परीक्षा एडिट करण्यासाठी ---
+async function editExam(examId, currentTitle) {
+    const newTitle = prompt("नवीन परीक्षेचे नाव टाका:", currentTitle);
+    const newQuestions = prompt("एकूण प्रश्नांची संख्या बदला:");
+
+    if (newTitle && newQuestions) {
+        const { error } = await supabaseClient
+            .from('exams')
+            .update({ 
+                exam_title: newTitle, 
+                total_questions: parseInt(newQuestions) 
+            })
+            .eq('id', examId);
+
+        if (error) {
+            showToast("चूक: " + error.message, "error");
+        } else {
+            showToast("परीक्षा अपडेट झाली!", "success");
+            fetchExamsList(); // लिस्ट रिफ्रेश करण्यासाठी
+        }
+    }
+}
     async function loadStudentsDropdown() {
         const { data } = await supabaseClient.from('profiles').select('id, name').eq('role', 'student').eq('is_active', true);
         const select = document.getElementById('report_student_select');
