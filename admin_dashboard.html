@@ -372,33 +372,52 @@ async function editExam(examId, currentTitle) {
 
     async function createExam() {
         const btn = document.getElementById('exam-submit-btn');
-        const title = document.getElementById('exam_title').value;
+        const title = document.getElementById('exam_title').value.trim(); // .trim() केल्यामुळे स्पेसची चूक होणार नाही
         const type = document.getElementById('exam_type').value;
         const qCount = parseInt(document.getElementById('total_questions').value);
         const valid = document.getElementById('valid_until').value;
         
-        // १. बटण बंद (Disable) करा आणि मेसेज दाखवा
+        if (!title || !qCount || !valid) {
+            showToast("कृपया सर्व माहिती भरा.", "error");
+            return;
+        }
+
         btn.disabled = true;
         btn.innerText = "प्रक्रिया सुरू आहे...";
 
         try {
-            // सर्व फिल्टर केलेले प्रश्न आणणे
+            // १. डुप्लिकेट तपासणे (Duplicate Check)
+            const { data: existingExams, error: checkError } = await supabaseClient
+                .from('exams')
+                .select('id')
+                .eq('exam_title', title);
+
+            if (checkError) throw checkError;
+
+            if (existingExams && existingExams.length > 0) {
+                showToast("या नावाची परीक्षा आधीच अस्तित्वात आहे!", "error");
+                btn.disabled = false;
+                btn.innerText = "परीक्षा जनरेट करा";
+                return;
+            }
+
+            // २. सर्व फिल्टर केलेले प्रश्न आणणे
             let query = supabaseClient.from(TABLE_NAME).select('Question ID'); 
             const { data: allQuestions } = await query;
             
             if(!allQuestions || allQuestions.length < qCount) { 
-                alert("पुरेसे प्रश्न उपलब्ध नाहीत!"); 
+                showToast("पुरेसे प्रश्न उपलब्ध नाहीत!", "error");
                 btn.disabled = false; 
                 btn.innerText = "परीक्षा जनरेट करा";
                 return; 
             }
 
-            // रँडम प्रश्न निवडणे
+            // ३. रँडम प्रश्न निवडणे
             const shuffled = allQuestions.sort(() => 0.5 - Math.random());
             const selectedIds = shuffled.slice(0, qCount).map(q => q['Question ID']);
 
-            // परीक्षा सेव्ह करणे
-            const { error } = await supabaseClient.from('exams').insert([{ 
+            // ४. परीक्षा सेव्ह करणे
+            const { error: insertError } = await supabaseClient.from('exams').insert([{ 
                 exam_title: title, 
                 exam_type: type, 
                 total_questions: qCount, 
@@ -406,23 +425,22 @@ async function editExam(examId, currentTitle) {
                 selected_question_ids: selectedIds
             }]);
 
-            if (error) throw error;
+            if (insertError) throw insertError;
 
             showToast("परीक्षा यशस्वीरीत्या जनरेट झाली!");
             
             // फॉर्म रिकामा करा
             document.getElementById('exam_title').value = "";
             document.getElementById('total_questions').value = "";
+            fetchExamsList(); // लिस्ट रिफ्रेश करा
 
         } catch (err) {
             showToast("चूक: " + err.message, "error");
         } finally {
-            // शेवटी बटण पुन्हा चालू करा
             btn.disabled = false;
             btn.innerText = "परीक्षा जनरेट करा";
         }
     }
-
     async function logout() { await supabaseClient.auth.signOut(); window.location.href = "index.html"; }
 
     checkAdmin();
