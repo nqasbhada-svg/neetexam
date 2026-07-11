@@ -350,27 +350,30 @@
         let detailedAnalysisArray = []; // JSON array to save to DB
 
        // submitExam फंक्शन मधील हा भाग बदला:
-examQuestions.forEach((q, index) => {
-    const ansRaw = isCap ? q['Correct Option'] : q['correct option'] || q['correct_option'];
-    const correctAns = ansRaw ? ansRaw.toString().trim().charAt(0).toUpperCase() : "";
-    const studentAns = studentResponses[index] || null;
-    const explanation = isCap ? q['Detailed Explanation'] : q['detailed explanation'] || q['detailed_explanation'] || "स्पष्टीकरण उपलब्ध नाही.";
-    
-    // नवीन: विषय शोधणे (Subject किंवा subject कॉलम)
-    const subject = q['Subject'] || q['subject'] || "General";
+// submitExam() फंक्शनमध्ये हा बदल करा:
+        examQuestions.forEach((q, index) => {
+            const ansRaw = isCap ? q['Correct Option'] : q['correct option'] || q['correct_option'];
+            const correctAns = ansRaw ? ansRaw.toString().trim().charAt(0).toUpperCase() : "";
+            const studentAns = studentResponses[index] || null;
+            const explanation = isCap ? q['Detailed Explanation'] : q['detailed explanation'] || q['detailed_explanation'] || "स्पष्टीकरण उपलब्ध नाही.";
+            const subject = q['Subject'] || q['subject'] || "General";
 
-    if (!studentAns) unattempted++;
-    else if (studentAns === correctAns) correct++;
-    else wrong++;
+            if (!studentAns) unattempted++;
+            else if (studentAns === correctAns) correct++;
+            else wrong++;
 
-    detailedAnalysisArray.push({
-        question: isCap ? q['Question'] : q['question'],
-        subject: subject, // हे नवीन जोडले आहे
-        student_ans: studentAns,
-        correct_ans: correctAns,
-        explanation: explanation
-    });
-});
+            detailedAnalysisArray.push({
+                question: isCap ? q['Question'] : q['question'],
+                optA: isCap ? q['Option A'] : q['option a'] || q['option_a'],
+                optB: isCap ? q['Option B'] : q['option b'] || q['option_b'],
+                optC: isCap ? q['Option C'] : q['option c'] || q['option_c'],
+                optD: isCap ? q['Option D'] : q['option d'] || q['option_d'],
+                subject: subject,
+                student_ans: studentAns,
+                correct_ans: correctAns,
+                explanation: explanation
+            });
+        });
         const obtainedScore = (correct * 4) - (wrong * 1);
         document.getElementById('single-question-container').innerHTML = "<div style='text-align:center; font-size:18px;'>निकाल सेव्ह होत आहे...</div>";
 
@@ -436,108 +439,149 @@ examQuestions.forEach((q, index) => {
         } catch (err) { tbody.innerHTML = `<tr><td colspan='7' style='text-align:center; color:red;'>तांत्रिक अडचण: ${err.message}</td></tr>`; }
     }
 
-    // Modal Display Logic
-   // Modal Display Logic with Subject-wise Analysis
+    // ग्लोबल व्हेरिएबल (क्लिक केलेल्या प्रश्नाचा डेटा ठेवण्यासाठी)
+    window.currentAnalysisData = [];
+
+    // १. मुख्य विश्लेषण पॉप-अप उघडणे
     function openAnalysis(index) {
-        const result = mySavedResultsData[index];
+        // ॲडमिन आणि स्टुडंट दोन्हीसाठी चालणारा कोड
+        const result = (typeof mySavedAdminResultsData !== 'undefined' && mySavedAdminResultsData.length > 0) 
+                     ? mySavedAdminResultsData[index] 
+                     : mySavedResultsData[index];
+                     
         const data = result.response_data;
         if(!data || data.length === 0) return;
 
-        // १. विषयनिहाय कॅल्क्युलेशन करणे (Subject-wise Stats)
+        window.currentAnalysisData = data; // डेटा ग्लोबल सेव्ह केला
+
+        // A. विषयनिहाय तक्ता बनवणे
         const stats = {};
         data.forEach((q) => {
-            const subj = q.subject || "General"; // जर विषय नसेल तर General
+            const subj = q.subject || "General";
             if (!stats[subj]) stats[subj] = { total: 0, correct: 0, wrong: 0, unattempted: 0 };
-            
             stats[subj].total++;
-            if (q.student_ans === q.correct_ans) {
-                stats[subj].correct++;
-            } else if (q.student_ans) {
-                stats[subj].wrong++;
-            } else {
-                stats[subj].unattempted++;
-            }
+            if (q.student_ans === q.correct_ans) stats[subj].correct++;
+            else if (q.student_ans) stats[subj].wrong++;
+            else stats[subj].unattempted++;
         });
 
-        // २. विषयनिहाय तक्ता (Subject-wise Table HTML) बनवणे
-        let subjectHtml = `
-            <div style="background: #F9FAFB; padding: 20px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 30px;">
-                <h3 style="margin-bottom: 15px; color: var(--primary); font-size: 18px;">📊 विषयनिहाय कामगिरी (Subject-wise Report)</h3>
-                <table>
+        let html = `
+            <div style="background: #F9FAFB; padding: 15px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 20px;">
+                <h3 style="margin-bottom: 10px; color: var(--primary); font-size: 16px;">📊 विषयनिहाय कामगिरी</h3>
+                <table style="font-size:13px;">
                     <thead>
                         <tr>
-                            <th>विषय (Subject)</th>
-                            <th style="text-align:center;">एकूण प्रश्न</th>
-                            <th style="text-align:center; color: var(--success);">बरोबर (+4)</th>
-                            <th style="text-align:center; color: var(--danger);">चूक (-1)</th>
-                            <th style="text-align:center;">सोडवले नाहीत</th>
-                            <th style="text-align:center;">मिळालेले गुण</th>
+                            <th>विषय</th><th style="text-align:center;">प्रश्न</th>
+                            <th style="text-align:center; color: var(--success);">बरोबर</th>
+                            <th style="text-align:center; color: var(--danger);">चूक</th>
                         </tr>
                     </thead>
                     <tbody>
         `;
-
         for (let subj in stats) {
-            let score = (stats[subj].correct * 4) - (stats[subj].wrong * 1);
-            let maxSubjScore = stats[subj].total * 4;
-            subjectHtml += `
-                <tr>
-                    <td><strong>${subj}</strong></td>
-                    <td style="text-align:center;">${stats[subj].total}</td>
-                    <td style="text-align:center;" class="text-green">${stats[subj].correct}</td>
-                    <td style="text-align:center;" class="text-red">${stats[subj].wrong}</td>
-                    <td style="text-align:center;">${stats[subj].unattempted}</td>
-                    <td style="text-align:center;"><strong>${score}</strong> / ${maxSubjScore}</td>
-                </tr>
-            `;
+            html += `<tr>
+                <td><strong>${subj}</strong></td>
+                <td style="text-align:center;">${stats[subj].total}</td>
+                <td style="text-align:center;" class="text-green">${stats[subj].correct}</td>
+                <td style="text-align:center;" class="text-red">${stats[subj].wrong}</td>
+            </tr>`;
         }
-        subjectHtml += `</tbody></table></div>`;
+        html += `</tbody></table></div>`;
 
-        // ३. प्रश्ननिहाय स्पष्टीकरण (Question-by-Question HTML)
-        let questionHtml = `<h3 style="margin-bottom: 15px; color: #1F2937; font-size: 18px; border-bottom: 2px solid var(--border); padding-bottom: 10px;">📝 प्रश्ननिहाय स्पष्टीकरण (Detailed Review)</h3>`;
+        // B. रंगीत नंबर्सची ग्रिड (Question Palette)
+        html += `<h3 style="margin-bottom: 10px; font-size: 15px;">🔢 प्रश्नाचे स्पष्टीकरण पाहण्यासाठी खालील क्रमांकावर क्लिक करा:</h3>`;
+        html += `<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; max-height: 150px; overflow-y: auto; padding: 15px; background: #E5E7EB; border-radius: 8px;">`;
         
         data.forEach((q, i) => {
-            let statusBadge = "";
-            let borderColor = "";
+            let bgColor = "#D1D5DB"; // सोडवला नाही (राखाडी)
+            let textColor = "#374151";
             
             if(q.student_ans === q.correct_ans) {
-                statusBadge = `<span class="badge badge-success">बरोबर (+4)</span>`; borderColor = "var(--success)";
-            } else if (q.student_ans && q.student_ans !== q.correct_ans) {
-                statusBadge = `<span class="badge badge-danger">चूक (-1)</span>`; borderColor = "var(--danger)";
-            } else {
-                statusBadge = `<span class="badge" style="background:#E5E7EB; color:#374151;">सोडवला नाही (0)</span>`; borderColor = "#9CA3AF";
+                bgColor = "var(--success)"; textColor = "white"; // बरोबर (हिरवा)
+            } else if(q.student_ans) {
+                bgColor = "var(--danger)"; textColor = "white"; // चूक (लाल)
             }
 
-            questionHtml += `
-                <div class="analysis-box" style="border-left: 5px solid ${borderColor}; margin-bottom: 20px;">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                        <div>
-                            <strong>प्रश्न ${i+1}:</strong> <span style="color:var(--text-muted); font-size: 12px; margin-left: 10px;">[ ${q.subject || 'General'} ]</span>
-                        </div>
-                        ${statusBadge}
-                    </div>
-                    <p style="font-size:16px; margin-bottom:15px; font-weight: 500;">${q.question}</p>
-                    <p style="font-size:14px; color:#4B5563; background: #f9fafb; padding: 10px; border-radius: 6px;">
-                        तुमचे उत्तर: <strong>${q.student_ans ? q.student_ans + ")" : "दिले नाही"}</strong> <br>
-                        अचूक उत्तर: <strong style="color:var(--success);">${q.correct_ans})</strong>
-                    </p>
+            html += `
+                <button onclick="showQuestionDetail(${i})" 
+                    style="width: 40px; height: 40px; border-radius: 50%; border: none; background: ${bgColor}; color: ${textColor}; font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    ${i + 1}
+                </button>
             `;
-            
-            // फक्त चुकीच्या आणि न सोडवलेल्या प्रश्नांसाठी स्पष्टीकरण दाखवणे
-            if(q.student_ans !== q.correct_ans) {
-                questionHtml += `
-                    <div class="ans-explanation" style="margin-top: 15px;">
-                        <strong>💡 स्पष्टीकरण (Detailed Explanation):</strong><br>
-                        ${q.explanation}
-                    </div>
-                `;
-            }
-            questionHtml += `</div>`;
         });
+        html += `</div>`;
 
-        // ४. दोन्ही भाग Modal मध्ये एकत्र करणे
-        document.getElementById('analysis-body').innerHTML = subjectHtml + questionHtml;
+        // C. प्रश्न, ऑप्शन्स आणि स्पष्टीकरण दाखवण्यासाठी रिकामी जागा
+        html += `<div id="question-detail-view" style="border: 1px solid var(--border); border-radius: 8px; padding: 20px; background: white; min-height: 250px;"></div>`;
+
+        document.getElementById('analysis-body').innerHTML = html;
         document.getElementById('analysis-modal').style.display = 'flex';
+        
+        // पॉप-अप उघडल्यावर आपोआप पहिला प्रश्न दाखवणे
+        showQuestionDetail(0);
+    }
+
+    // २. क्लिक केलेल्या प्रश्नाचे डिटेल्स दाखवणे
+    function showQuestionDetail(index) {
+        const q = window.currentAnalysisData[index];
+        if (!q) return;
+
+        let statusBadge = "";
+        let borderColor = "";
+        
+        if(q.student_ans === q.correct_ans) {
+            statusBadge = `<span class="badge badge-success" style="font-size:14px;">बरोबर (+4)</span>`; borderColor = "var(--success)";
+        } else if (q.student_ans) {
+            statusBadge = `<span class="badge badge-danger" style="font-size:14px;">चूक (-1)</span>`; borderColor = "var(--danger)";
+        } else {
+            statusBadge = `<span class="badge" style="background:#E5E7EB; color:#374151; font-size:14px;">सोडवला नाही (0)</span>`; borderColor = "#9CA3AF";
+        }
+
+        // ऑप्शन्स दाखवणे
+        let optionsHtml = "";
+        if(q.optA || q.optB || q.optC || q.optD) {
+            optionsHtml = `
+                <div style="margin-bottom: 20px; font-size: 15px; line-height: 1.8;">
+                    <div style="margin-bottom: 5px;"><strong>A)</strong> ${q.optA || ''}</div>
+                    <div style="margin-bottom: 5px;"><strong>B)</strong> ${q.optB || ''}</div>
+                    <div style="margin-bottom: 5px;"><strong>C)</strong> ${q.optC || ''}</div>
+                    <div style="margin-bottom: 5px;"><strong>D)</strong> ${q.optD || ''}</div>
+                </div>
+            `;
+        }
+
+        let detailHtml = `
+            <div style="border-left: 5px solid ${borderColor}; padding-left: 15px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <div style="font-size: 18px; font-weight: bold; color:var(--primary);">
+                        प्रश्न क्रमांक ${index + 1} <span style="color:var(--text-muted); font-size: 14px; font-weight:normal; margin-left: 10px;">[ विषय: ${q.subject || 'General'} ]</span>
+                    </div>
+                    ${statusBadge}
+                </div>
+                
+                <p style="font-size:17px; margin-bottom:20px; font-weight: 600; color:#111827;">${q.question}</p>
+                
+                ${optionsHtml}
+
+                <div style="background: #F9FAFB; padding: 15px; border-radius: 8px; margin-bottom: 15px; font-size: 15px; border: 1px solid var(--border);">
+                    <div style="margin-bottom: 8px;">विद्यार्थ्याने निवडलेले उत्तर: <strong>${q.student_ans ? q.student_ans + ")" : "<span style='color:var(--danger);'>प्रश्न सोडवला नाही</span>"}</strong></div>
+                    <div>खरे अचूक उत्तर: <strong style="color:var(--success);">${q.correct_ans})</strong></div>
+                </div>
+        `;
+        
+        // जर उत्तर चुकले असेल किंवा सोडवले नसेल, तरच स्पष्टीकरण दाखवा
+        if(q.student_ans !== q.correct_ans && q.explanation) {
+            detailHtml += `
+                <div style="background: #FEF3C7; padding: 15px; border-radius: 8px; border-left: 4px solid var(--warning);">
+                    <strong style="display:block; margin-bottom:8px; color: #92400E; font-size:15px;">💡 स्पष्टीकरण (Detailed Explanation):</strong>
+                    <div style="font-size: 14px; color: #92400E; line-height: 1.6;">${q.explanation}</div>
+                </div>
+            `;
+        }
+        detailHtml += `</div>`;
+
+        // तयार झालेला प्रश्न 'question-detail-view' या डब्यात दाखवा
+        document.getElementById('question-detail-view').innerHTML = detailHtml;
     }
     function closeAnalysis() { document.getElementById('analysis-modal').style.display = 'none'; }
     async function logout() { await supabaseClient.auth.signOut(); window.location.href = "index.html"; }
