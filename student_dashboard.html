@@ -437,12 +437,65 @@ examQuestions.forEach((q, index) => {
     }
 
     // Modal Display Logic
+   // Modal Display Logic with Subject-wise Analysis
     function openAnalysis(index) {
         const result = mySavedResultsData[index];
         const data = result.response_data;
         if(!data || data.length === 0) return;
 
-        let html = "";
+        // १. विषयनिहाय कॅल्क्युलेशन करणे (Subject-wise Stats)
+        const stats = {};
+        data.forEach((q) => {
+            const subj = q.subject || "General"; // जर विषय नसेल तर General
+            if (!stats[subj]) stats[subj] = { total: 0, correct: 0, wrong: 0, unattempted: 0 };
+            
+            stats[subj].total++;
+            if (q.student_ans === q.correct_ans) {
+                stats[subj].correct++;
+            } else if (q.student_ans) {
+                stats[subj].wrong++;
+            } else {
+                stats[subj].unattempted++;
+            }
+        });
+
+        // २. विषयनिहाय तक्ता (Subject-wise Table HTML) बनवणे
+        let subjectHtml = `
+            <div style="background: #F9FAFB; padding: 20px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 30px;">
+                <h3 style="margin-bottom: 15px; color: var(--primary); font-size: 18px;">📊 विषयनिहाय कामगिरी (Subject-wise Report)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>विषय (Subject)</th>
+                            <th style="text-align:center;">एकूण प्रश्न</th>
+                            <th style="text-align:center; color: var(--success);">बरोबर (+4)</th>
+                            <th style="text-align:center; color: var(--danger);">चूक (-1)</th>
+                            <th style="text-align:center;">सोडवले नाहीत</th>
+                            <th style="text-align:center;">मिळालेले गुण</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        for (let subj in stats) {
+            let score = (stats[subj].correct * 4) - (stats[subj].wrong * 1);
+            let maxSubjScore = stats[subj].total * 4;
+            subjectHtml += `
+                <tr>
+                    <td><strong>${subj}</strong></td>
+                    <td style="text-align:center;">${stats[subj].total}</td>
+                    <td style="text-align:center;" class="text-green">${stats[subj].correct}</td>
+                    <td style="text-align:center;" class="text-red">${stats[subj].wrong}</td>
+                    <td style="text-align:center;">${stats[subj].unattempted}</td>
+                    <td style="text-align:center;"><strong>${score}</strong> / ${maxSubjScore}</td>
+                </tr>
+            `;
+        }
+        subjectHtml += `</tbody></table></div>`;
+
+        // ३. प्रश्ननिहाय स्पष्टीकरण (Question-by-Question HTML)
+        let questionHtml = `<h3 style="margin-bottom: 15px; color: #1F2937; font-size: 18px; border-bottom: 2px solid var(--border); padding-bottom: 10px;">📝 प्रश्ननिहाय स्पष्टीकरण (Detailed Review)</h3>`;
+        
         data.forEach((q, i) => {
             let statusBadge = "";
             let borderColor = "";
@@ -455,13 +508,16 @@ examQuestions.forEach((q, index) => {
                 statusBadge = `<span class="badge" style="background:#E5E7EB; color:#374151;">सोडवला नाही (0)</span>`; borderColor = "#9CA3AF";
             }
 
-            html += `
-                <div class="analysis-box" style="border-left: 5px solid ${borderColor};">
+            questionHtml += `
+                <div class="analysis-box" style="border-left: 5px solid ${borderColor}; margin-bottom: 20px;">
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                        <strong>प्रश्न ${i+1}:</strong> ${statusBadge}
+                        <div>
+                            <strong>प्रश्न ${i+1}:</strong> <span style="color:var(--text-muted); font-size: 12px; margin-left: 10px;">[ ${q.subject || 'General'} ]</span>
+                        </div>
+                        ${statusBadge}
                     </div>
-                    <p style="font-size:16px; margin-bottom:15px;">${q.question}</p>
-                    <p style="font-size:14px; color:#4B5563;">
+                    <p style="font-size:16px; margin-bottom:15px; font-weight: 500;">${q.question}</p>
+                    <p style="font-size:14px; color:#4B5563; background: #f9fafb; padding: 10px; border-radius: 6px;">
                         तुमचे उत्तर: <strong>${q.student_ans ? q.student_ans + ")" : "दिले नाही"}</strong> <br>
                         अचूक उत्तर: <strong style="color:var(--success);">${q.correct_ans})</strong>
                     </p>
@@ -469,20 +525,20 @@ examQuestions.forEach((q, index) => {
             
             // फक्त चुकीच्या आणि न सोडवलेल्या प्रश्नांसाठी स्पष्टीकरण दाखवणे
             if(q.student_ans !== q.correct_ans) {
-                html += `
-                    <div class="ans-explanation">
-                        <strong>📝 स्पष्टीकरण (Explanation):</strong><br>
+                questionHtml += `
+                    <div class="ans-explanation" style="margin-top: 15px;">
+                        <strong>💡 स्पष्टीकरण (Detailed Explanation):</strong><br>
                         ${q.explanation}
                     </div>
                 `;
             }
-            html += `</div>`;
+            questionHtml += `</div>`;
         });
 
-        document.getElementById('analysis-body').innerHTML = html;
+        // ४. दोन्ही भाग Modal मध्ये एकत्र करणे
+        document.getElementById('analysis-body').innerHTML = subjectHtml + questionHtml;
         document.getElementById('analysis-modal').style.display = 'flex';
     }
-
     function closeAnalysis() { document.getElementById('analysis-modal').style.display = 'none'; }
     async function logout() { await supabaseClient.auth.signOut(); window.location.href = "index.html"; }
 
