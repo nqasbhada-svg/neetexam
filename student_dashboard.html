@@ -254,43 +254,38 @@
                 <td>${e.exam_type}</td>
                 <td>${e.total_questions}</td>
                 <td>${new Date(e.valid_until).toLocaleString('en-IN')}</td>
-                <td><button class='btn-start' onclick="startExam(${e.id})">परीक्षा सुरू करा</button></td>
+                <td><button class='btn-start' onclick="am(${e.id})">परीक्षा सुरू करा</button></td>
             </tr>
         `).join('');
     }
 
     // --- Live Exam Logic ---
     async function startExam(examId) {
-        const { data: examInfo } = await supabaseClient.from('exams').select('*').eq('id', examId).single();
-        if(!examInfo) return;
-        currentExamData = examInfo;
+    const { data: examInfo } = await supabaseClient.from('exams').select('*').eq('id', examId).single();
+    if(!examInfo) return;
+    currentExamData = examInfo;
 
-        document.getElementById('top-navbar').classList.add('hidden');
-        document.getElementById('main-nav').classList.add('hidden');
-        document.getElementById('main-container').classList.add('hidden');
-        document.body.style.overflow = 'hidden'; 
-        document.getElementById('exam-interface').classList.remove('hidden');
-        document.getElementById('live-exam-title').innerText = examInfo.exam_title;
+    // UI बदलणे
+    document.getElementById('exam-interface').classList.remove('hidden');
+    document.getElementById('main-container').classList.add('hidden');
+    
+    // १. फिक्स केलेले प्रश्न ID द्वारे आणणे
+    const { data: questions } = await supabaseClient
+        .from(TABLE_NAME)
+        .select('*')
+        .in('Question ID', examInfo.selected_question_ids);
 
-        let query = supabaseClient.from(TABLE_NAME).select('*');
-        const { data: sample } = await supabaseClient.from(TABLE_NAME).select('*').limit(1);
-        const colSubj = sample[0].hasOwnProperty('Subject') ? 'Subject' : 'subject';
-        const colChap = sample[0].hasOwnProperty('Chapter') ? 'Chapter' : 'chapter';
+    // २. विद्यार्थ्याच्या स्क्रीनवर प्रश्नांची ऑर्डर बदलणे (Client Side Shuffle)
+    examQuestions = questions.sort(() => 0.5 - Math.random());
+    
+    currentQuestionIndex = 0;
+    studentResponses = {};
+    questionStatuses = Array(examQuestions.length).fill('not-visited');
+    questionStatuses[0] = 'not-answered';
 
-        if(examInfo.exam_type === 'Subject' && examInfo.subjects) query = query.in(colSubj, examInfo.subjects.split(', '));
-        else if(examInfo.exam_type === 'Chapter' && examInfo.chapters) query = query.in(colChap, examInfo.chapters.split(', '));
-
-        const { data: questions } = await query;
-        examQuestions = questions.sort(() => 0.5 - Math.random()).slice(0, examInfo.total_questions);
-        
-        currentQuestionIndex = 0; studentResponses = {};
-        questionStatuses = Array(examQuestions.length).fill('not-visited');
-        questionStatuses[0] = 'not-answered'; 
-
-        renderExamScreen();
-        startTimer(examInfo.total_questions * 60); 
-    }
-
+    renderExamScreen();
+    startTimer(examInfo.total_questions * 60); 
+}
     function renderExamScreen() {
         document.getElementById('q-counter').innerText = `प्रश्न ${currentQuestionIndex + 1} / ${examQuestions.length}`;
         const q = examQuestions[currentQuestionIndex];
