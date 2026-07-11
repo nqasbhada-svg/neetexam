@@ -228,15 +228,28 @@
     }
 
     async function fetchExamsList() {
-        const { data } = await supabaseClient.from('exams').select('*').order('id', { ascending: false });
-        const tbody = document.getElementById('exams-list');
-        if (!data || data.length === 0) { tbody.innerHTML = "<tr><td colspan='4'>कोणत्याही परीक्षा नाहीत.</td></tr>"; return; }
-        tbody.innerHTML = data.map(e => {
-            const dateStr = e.valid_until ? new Date(e.valid_until).toLocaleString('en-IN') : 'N/A';
-            return `<tr><td><strong>${e.exam_title}</strong></td><td>${e.exam_type}</td><td>${e.total_questions}</td><td>${dateStr}</td></tr>`;
-        }).join('');
+    const { data } = await supabaseClient.from('exams').select('*').order('id', { ascending: false });
+    const tbody = document.getElementById('exams-list');
+    
+    if (!data || data.length === 0) { 
+        tbody.innerHTML = "<tr><td colspan='5'>कोणत्याही परीक्षा नाहीत.</td></tr>"; 
+        return; 
     }
-
+    
+    tbody.innerHTML = data.map(e => {
+        const dateStr = e.valid_until ? new Date(e.valid_until).toLocaleString('en-IN') : 'N/A';
+        return `<tr>
+            <td><strong>${e.exam_title}</strong></td>
+            <td>${e.exam_type}</td>
+            <td>${e.total_questions}</td>
+            <td>${dateStr}</td>
+            <td>
+                <button class='approve-btn' style='background:orange;' onclick="editExam(${e.id}, '${e.exam_title}')">Edit</button>
+                <button class='approve-btn' style='background:red;' onclick="deleteExam(${e.id})">Delete</button>
+            </td>
+        </tr>`;
+    }).join('');
+}
     async function loadStudentsDropdown() {
         const { data } = await supabaseClient.from('profiles').select('id, name').eq('role', 'student').eq('is_active', true);
         const select = document.getElementById('report_student_select');
