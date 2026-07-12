@@ -212,6 +212,29 @@
     let studentResponses = {}; 
     let questionStatuses = []; 
 
+    // --- नवीन: प्रश्नांचा फॉरमॅट नीट करण्यासाठी स्मार्ट फंक्शन ---
+    function formatQuestionText(text) {
+        if (!text) return "";
+        
+        // १. डेटाबेसमध्ये आधीच \n (Enter) असेल, तर त्याला <br> मध्ये बदलणे
+        let formatted = text.replace(/\n/g, "<br>");
+        
+        // २. Statement I आणि Statement II ला नवीन ओळीवर घेणे आणि रंगीत करणे
+        formatted = formatted.replace(/\b(Statement\s*[-]?\s*I\b[:\.]?\s*)/g, "<br><br><strong style='color:var(--primary);'>$1</strong> ");
+        formatted = formatted.replace(/\b(Statement\s*[-]?\s*II\b[:\.]?\s*)/g, "<br><br><strong style='color:var(--primary);'>$1</strong> ");
+        formatted = formatted.replace(/\b(Statement\s*[-]?\s*1\b[:\.]?\s*)/g, "<br><br><strong style='color:var(--primary);'>$1</strong> ");
+        formatted = formatted.replace(/\b(Statement\s*[-]?\s*2\b[:\.]?\s*)/g, "<br><br><strong style='color:var(--primary);'>$1</strong> ");
+        
+        // ३. Assertion (A) आणि Reason (R) साठी सुद्धा
+        formatted = formatted.replace(/\b(Assertion\s*\(?A\)?\s*[:\.])/gi, "<br><br><strong style='color:var(--danger);'>$1</strong> ");
+        formatted = formatted.replace(/\b(Reason\s*\(?R\)?\s*[:\.])/gi, "<br><br><strong style='color:var(--success);'>$1</strong> ");
+
+        // जर वाक्याच्या सुरुवातीलाच <br> आले असतील तर ते काढणे
+        formatted = formatted.replace(/^(<br>\s*)+/, "");
+        
+        return formatted;
+    }
+
     function openTab(tabId) {
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -293,7 +316,9 @@
         const q = examQuestions[currentQuestionIndex];
         const isCap = q.hasOwnProperty('Option A');
         
-        const qText = isCap ? q['Question'] : q['question'];
+        // --- प्रश्नाला फॉरमॅट लावणे ---
+        let rawQText = isCap ? q['Question'] : q['question'];
+        const qText = formatQuestionText(rawQText);
         
         // 1. Match the Column Rendering Logic
         let questionHtml = `<div class="q-text">${currentQuestionIndex + 1}. ${qText}</div>`;
@@ -574,8 +599,13 @@
             statusBadge = `<span class="badge" style="background:#E5E7EB; color:#374151; font-size:14px;">सोडवला नाही (0)</span>`; borderColor = "#9CA3AF";
         }
 
+        // --- प्रश्नाला फॉरमॅट लावणे (Analysis View) ---
+        let rawQTextAnalysis = q.question || q.Question;
+        let formattedQTextAnalysis = formatQuestionText(rawQTextAnalysis);
+        
         // Match the column table for Analysis view
-        let questionTextHtml = `<p style="font-size:17px; margin-bottom:20px; font-weight: 600; color:#111827;">${q.question || q.Question}</p>`;
+        let questionTextHtml = `<p style="font-size:17px; margin-bottom:20px; font-weight: 600; color:#111827; line-height:1.6;">${formattedQTextAnalysis}</p>`;
+        
         if (q.Column_I && Array.isArray(q.Column_I)) {
             let tableRows = "";
             const maxLength = Math.max(q.Column_I.length, q.Column_II.length);
