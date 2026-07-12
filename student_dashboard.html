@@ -7,6 +7,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
+    <!-- KaTeX CSS & JS (Math Formulas साठी) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
+
     <style>
         :root {
             --primary: #4F46E5; --primary-hover: #4338CA;
@@ -68,7 +73,7 @@
         .btn-prev { background: white; border: 1px solid var(--border); color: var(--text-main); }
         .btn-clear { background: white; border: 1px solid var(--danger); color: var(--danger); }
         .btn-next { background: var(--primary); color: white; }
-        .btn- { background: var(--success); color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 16px; margin-top: 30px;}
+        .btn-submit { background: var(--success); color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 16px; margin-top: 30px;}
 
         .exam-sidebar { flex: 1; min-width: 300px; max-width: 350px; background: white; border-left: 1px solid var(--border); display: flex; flex-direction: column; }
         .profile-timer-section { padding: 20px; border-bottom: 1px solid var(--border); text-align: center; background: #f9fafb;}
@@ -170,7 +175,7 @@
                 <div class="palette-section">
                     <h4 style="font-size: 15px; margin-bottom: 10px;">प्रश्न क्रमांक (Palette):</h4>
                     <div class="palette-grid" id="palette-container"></div>
-                    <button class="btn-" onclick="Exam()">पेपर जमा करा ()</button>
+                    <button class="btn-submit" onclick="submitExam()">पेपर जमा करा (Submit)</button>
                 </div>
             </div>
         </div>
@@ -226,7 +231,6 @@
             alert("अकाउंट ॲक्टिव्हेट झालेले नाही."); window.location.href = "index.html"; 
         } else { 
             currentStudentId = profile.id; 
-            // Display Name and Roll No (Mobile Number acts as Roll No)
             document.getElementById('student-name-display').innerText = `विद्यार्थी: ${profile.name} | रोल नं: ${profile.mobile_number}`;
             fetchAvailableExams(); 
         }
@@ -254,44 +258,69 @@
                 <td>${e.exam_type}</td>
                 <td>${e.total_questions}</td>
                 <td>${new Date(e.valid_until).toLocaleString('en-IN')}</td>
-                <td><button class='btn-start' onclick="am(${e.id})">परीक्षा सुरू करा</button></td>
+                <td><button class='btn-start' onclick="startExam(${e.id})">परीक्षा सुरू करा</button></td>
             </tr>
         `).join('');
     }
 
     // --- Live Exam Logic ---
     async function startExam(examId) {
-    const { data: examInfo } = await supabaseClient.from('exams').select('*').eq('id', examId).single();
-    if(!examInfo) return;
-    currentExamData = examInfo;
+        const { data: examInfo } = await supabaseClient.from('exams').select('*').eq('id', examId).single();
+        if(!examInfo) return;
+        currentExamData = examInfo;
 
-    // UI बदलणे
-    document.getElementById('exam-interface').classList.remove('hidden');
-    document.getElementById('main-container').classList.add('hidden');
-    
-    // १. फिक्स केलेले प्रश्न ID द्वारे आणणे
-    const { data: questions } = await supabaseClient
-        .from(TABLE_NAME)
-        .select('*')
-        .in('Question ID', examInfo.selected_question_ids);
+        document.getElementById('exam-interface').classList.remove('hidden');
+        document.getElementById('main-container').classList.add('hidden');
+        
+        const { data: questions } = await supabaseClient
+            .from(TABLE_NAME)
+            .select('*')
+            .in('Question ID', examInfo.selected_question_ids);
 
-    // २. विद्यार्थ्याच्या स्क्रीनवर प्रश्नांची ऑर्डर बदलणे (Client Side Shuffle)
-    examQuestions = questions.sort(() => 0.5 - Math.random());
-    
-    currentQuestionIndex = 0;
-    studentResponses = {};
-    questionStatuses = Array(examQuestions.length).fill('not-visited');
-    questionStatuses[0] = 'not-answered';
+        examQuestions = questions.sort(() => 0.5 - Math.random());
+        
+        currentQuestionIndex = 0;
+        studentResponses = {};
+        questionStatuses = Array(examQuestions.length).fill('not-visited');
+        questionStatuses[0] = 'not-answered';
 
-    renderExamScreen();
-    startTimer(examInfo.total_questions * 60); 
-}
+        renderExamScreen();
+        startTimer(examInfo.total_questions * 60); 
+    }
+
     function renderExamScreen() {
         document.getElementById('q-counter').innerText = `प्रश्न ${currentQuestionIndex + 1} / ${examQuestions.length}`;
         const q = examQuestions[currentQuestionIndex];
         const isCap = q.hasOwnProperty('Option A');
         
         const qText = isCap ? q['Question'] : q['question'];
+        
+        // 1. Match the Column Rendering Logic
+        let questionHtml = `<div class="q-text">${currentQuestionIndex + 1}. ${qText}</div>`;
+        
+        const col1 = q['Column_I'] || q['Column I'] || null;
+        const col2 = q['Column_II'] || q['Column II'] || null;
+        
+        if (col1 && Array.isArray(col1)) {
+            let tableRows = "";
+            const maxLength = Math.max(col1.length, col2.length);
+            for (let i = 0; i < maxLength; i++) {
+                tableRows += `<tr>
+                    <td style="padding: 10px; border: 1px solid #ddd;">${col1[i] || ''}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">${col2[i] || ''}</td>
+                </tr>`;
+            }
+            questionHtml += `
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 15px;">
+                    <thead style="background: #f3f4f6;">
+                        <tr><th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Column I</th>
+                            <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Column II</th></tr>
+                    </thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+            `;
+        }
+
         const optA = isCap ? q['Option A'] : q['option a'] || q['option_a'];
         const optB = isCap ? q['Option B'] : q['option b'] || q['option_b'];
         const optC = isCap ? q['Option C'] : q['option c'] || q['option_c'];
@@ -299,7 +328,7 @@
         const savedAns = studentResponses[currentQuestionIndex] || null;
 
         document.getElementById('single-question-container').innerHTML = `
-            <div class="q-text">${currentQuestionIndex + 1}. ${qText}</div>
+            ${questionHtml}
             <div class="options-grid">
                 <label class="option-label"><input type="radio" name="current_q" value="A" ${savedAns==='A'?'checked':''}> A) ${optA}</label>
                 <label class="option-label"><input type="radio" name="current_q" value="B" ${savedAns==='B'?'checked':''}> B) ${optB}</label>
@@ -312,6 +341,16 @@
         pal.innerHTML = "";
         for (let i = 0; i < examQuestions.length; i++) {
             pal.innerHTML += `<button class="palette-btn status-${questionStatuses[i]} ${i === currentQuestionIndex ? 'status-active' : ''}" onclick="jumpToQuestion(${i})">${i + 1}</button>`;
+        }
+
+        // 2. Render Math Formulas Using KaTeX
+        if (typeof renderMathInElement === 'function') {
+            renderMathInElement(document.getElementById('single-question-container'), {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "\\(", right: "\\)", display: false}
+                ]
+            });
         }
     }
 
@@ -335,7 +374,6 @@
         }, 1000);
     }
 
-    // --- Submit Exam and Save Detailed Analysis ---
     async function submitExam() {
         clearInterval(timerInterval);
         captureCurrentResponse();
@@ -347,16 +385,16 @@
 
         let correct = 0, wrong = 0, unattempted = 0;
         const isCap = examQuestions[0].hasOwnProperty('Correct Option');
-        let detailedAnalysisArray = []; // JSON array to save to DB
+        let detailedAnalysisArray = []; 
 
-       // submitExam फंक्शन मधील हा भाग बदला:
-// submitExam() फंक्शनमध्ये हा बदल करा:
         examQuestions.forEach((q, index) => {
             const ansRaw = isCap ? q['Correct Option'] : q['correct option'] || q['correct_option'];
             const correctAns = ansRaw ? ansRaw.toString().trim().charAt(0).toUpperCase() : "";
             const studentAns = studentResponses[index] || null;
             const explanation = isCap ? q['Detailed Explanation'] : q['detailed explanation'] || q['detailed_explanation'] || "स्पष्टीकरण उपलब्ध नाही.";
             const subject = q['Subject'] || q['subject'] || "General";
+            const col1 = q['Column_I'] || q['Column I'] || null;
+            const col2 = q['Column_II'] || q['Column II'] || null;
 
             if (!studentAns) unattempted++;
             else if (studentAns === correctAns) correct++;
@@ -364,6 +402,8 @@
 
             detailedAnalysisArray.push({
                 question: isCap ? q['Question'] : q['question'],
+                Column_I: col1,
+                Column_II: col2,
                 optA: isCap ? q['Option A'] : q['option a'] || q['option_a'],
                 optB: isCap ? q['Option B'] : q['option b'] || q['option_b'],
                 optC: isCap ? q['Option C'] : q['option c'] || q['option_c'],
@@ -374,6 +414,7 @@
                 explanation: explanation
             });
         });
+        
         const obtainedScore = (correct * 4) - (wrong * 1);
         document.getElementById('single-question-container').innerHTML = "<div style='text-align:center; font-size:18px;'>निकाल सेव्ह होत आहे...</div>";
 
@@ -386,7 +427,7 @@
                 wrong_answers: wrong,
                 unattempted: unattempted,
                 obtained_score: obtainedScore,
-                response_data: detailedAnalysisArray // Saving JSON for analysis
+                response_data: detailedAnalysisArray 
             }]);
             
             alert(`परीक्षा पूर्ण झाली!\nगुण: ${obtainedScore} / ${currentExamData.total_questions * 4}`);
@@ -394,9 +435,15 @@
         } catch(err) { alert("अडचण: " + err.message); window.location.reload(); }
     }
 
-    // --- Scorecard & Analysis Logic ---
+    // --- Scorecard Logic ---
     async function fetchMyResults() {
         const tbody = document.getElementById('my-results-list');
+        
+        if (!currentStudentId) {
+            tbody.innerHTML = "<tr><td colspan='7' style='text-align:center; color:var(--warning); font-weight:bold;'>माहिती लोड होत आहे... कृपया २ सेकंद थांबा आणि पुन्हा या टॅबवर क्लिक करा.</td></tr>";
+            return;
+        }
+        
         try {
             const { data: resultsData, error } = await supabaseClient.from('results').select('*').eq('student_id', currentStudentId).order('created_at', { ascending: false });
             if (error) throw error; 
@@ -406,7 +453,7 @@
                 return; 
             }
 
-            mySavedResultsData = resultsData; // Save globally to open modal later
+            mySavedResultsData = resultsData; 
             
             const examIds = [...new Set(resultsData.map(r => r.exam_id).filter(id => id != null))];
             let examMap = {};
@@ -422,8 +469,6 @@
                 const percentage = maxScore > 0 ? ((r.obtained_score / maxScore) * 100).toFixed(1) : 0;
                 const badge = percentage < 50 ? `<span class='badge badge-danger'>Practice Needed</span>` : `<span class='badge badge-success'>Good</span>`;
                 const examTitle = examMap[r.exam_id] || `Exam ID: ${r.exam_id}`;
-
-                // Check if JSON response_data exists
                 const btnHtml = r.response_data ? `<button class="btn-analysis" onclick="openAnalysis(${index})">👁️ विश्लेषण पहा</button>` : `<span style="color:gray; font-size:12px;">उपलब्ध नाही</span>`;
 
                 return `<tr>
@@ -439,12 +484,9 @@
         } catch (err) { tbody.innerHTML = `<tr><td colspan='7' style='text-align:center; color:red;'>तांत्रिक अडचण: ${err.message}</td></tr>`; }
     }
 
-    // ग्लोबल व्हेरिएबल (क्लिक केलेल्या प्रश्नाचा डेटा ठेवण्यासाठी)
     window.currentAnalysisData = [];
 
-    // १. मुख्य विश्लेषण पॉप-अप उघडणे
     function openAnalysis(index) {
-        // ॲडमिन आणि स्टुडंट दोन्हीसाठी चालणारा कोड
         const result = (typeof mySavedAdminResultsData !== 'undefined' && mySavedAdminResultsData.length > 0) 
                      ? mySavedAdminResultsData[index] 
                      : mySavedResultsData[index];
@@ -452,9 +494,8 @@
         const data = result.response_data;
         if(!data || data.length === 0) return;
 
-        window.currentAnalysisData = data; // डेटा ग्लोबल सेव्ह केला
+        window.currentAnalysisData = data; 
 
-        // A. विषयनिहाय तक्ता बनवणे
         const stats = {};
         data.forEach((q) => {
             const subj = q.subject || "General";
@@ -488,18 +529,17 @@
         }
         html += `</tbody></table></div>`;
 
-        // B. रंगीत नंबर्सची ग्रिड (Question Palette)
         html += `<h3 style="margin-bottom: 10px; font-size: 15px;">🔢 प्रश्नाचे स्पष्टीकरण पाहण्यासाठी खालील क्रमांकावर क्लिक करा:</h3>`;
         html += `<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; max-height: 150px; overflow-y: auto; padding: 15px; background: #E5E7EB; border-radius: 8px;">`;
         
         data.forEach((q, i) => {
-            let bgColor = "#D1D5DB"; // सोडवला नाही (राखाडी)
+            let bgColor = "#D1D5DB"; 
             let textColor = "#374151";
             
             if(q.student_ans === q.correct_ans) {
-                bgColor = "var(--success)"; textColor = "white"; // बरोबर (हिरवा)
+                bgColor = "var(--success)"; textColor = "white"; 
             } else if(q.student_ans) {
-                bgColor = "var(--danger)"; textColor = "white"; // चूक (लाल)
+                bgColor = "var(--danger)"; textColor = "white"; 
             }
 
             html += `
@@ -511,17 +551,14 @@
         });
         html += `</div>`;
 
-        // C. प्रश्न, ऑप्शन्स आणि स्पष्टीकरण दाखवण्यासाठी रिकामी जागा
         html += `<div id="question-detail-view" style="border: 1px solid var(--border); border-radius: 8px; padding: 20px; background: white; min-height: 250px;"></div>`;
 
         document.getElementById('analysis-body').innerHTML = html;
         document.getElementById('analysis-modal').style.display = 'flex';
         
-        // पॉप-अप उघडल्यावर आपोआप पहिला प्रश्न दाखवणे
         showQuestionDetail(0);
     }
 
-    // २. क्लिक केलेल्या प्रश्नाचे डिटेल्स दाखवणे
     function showQuestionDetail(index) {
         const q = window.currentAnalysisData[index];
         if (!q) return;
@@ -537,7 +574,28 @@
             statusBadge = `<span class="badge" style="background:#E5E7EB; color:#374151; font-size:14px;">सोडवला नाही (0)</span>`; borderColor = "#9CA3AF";
         }
 
-        // ऑप्शन्स दाखवणे
+        // Match the column table for Analysis view
+        let questionTextHtml = `<p style="font-size:17px; margin-bottom:20px; font-weight: 600; color:#111827;">${q.question || q.Question}</p>`;
+        if (q.Column_I && Array.isArray(q.Column_I)) {
+            let tableRows = "";
+            const maxLength = Math.max(q.Column_I.length, q.Column_II.length);
+            for (let i = 0; i < maxLength; i++) {
+                tableRows += `<tr>
+                    <td style="padding: 10px; border: 1px solid #ddd;">${q.Column_I[i] || ''}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">${q.Column_II[i] || ''}</td>
+                </tr>`;
+            }
+            questionTextHtml += `
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 15px;">
+                    <thead style="background: #f3f4f6;">
+                        <tr><th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Column I</th>
+                            <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Column II</th></tr>
+                    </thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+            `;
+        }
+
         let optionsHtml = "";
         if(q.optA || q.optB || q.optC || q.optD) {
             optionsHtml = `
@@ -559,7 +617,7 @@
                     ${statusBadge}
                 </div>
                 
-                <p style="font-size:17px; margin-bottom:20px; font-weight: 600; color:#111827;">${q.question}</p>
+                ${questionTextHtml}
                 
                 ${optionsHtml}
 
@@ -569,7 +627,6 @@
                 </div>
         `;
         
-        // जर उत्तर चुकले असेल किंवा सोडवले नसेल, तरच स्पष्टीकरण दाखवा
         if(q.student_ans !== q.correct_ans && q.explanation) {
             detailHtml += `
                 <div style="background: #FEF3C7; padding: 15px; border-radius: 8px; border-left: 4px solid var(--warning);">
@@ -580,9 +637,19 @@
         }
         detailHtml += `</div>`;
 
-        // तयार झालेला प्रश्न 'question-detail-view' या डब्यात दाखवा
         document.getElementById('question-detail-view').innerHTML = detailHtml;
+
+        // Render Math Formulas in Analysis Model Using KaTeX
+        if (typeof renderMathInElement === 'function') {
+            renderMathInElement(document.getElementById('question-detail-view'), {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "\\(", right: "\\)", display: false}
+                ]
+            });
+        }
     }
+    
     function closeAnalysis() { document.getElementById('analysis-modal').style.display = 'none'; }
     async function logout() { await supabaseClient.auth.signOut(); window.location.href = "index.html"; }
 
