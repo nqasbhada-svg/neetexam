@@ -586,23 +586,14 @@
                 btn.disabled = false; btn.innerText = "परीक्षा जनरेट करा"; return;
             }
 
-            // २. डेटाबेसमधील कॉलम्सची अचूक नावे शोधणे (Auto-detect columns)
-            const { data: sample } = await supabaseClient.from(TABLE_NAME).select('*').limit(1);
-            if (!sample || sample.length === 0) {
-                showToast("डेटाबेसमध्ये कोणतेही प्रश्न नाहीत!", "error");
-                btn.disabled = false; btn.innerText = "परीक्षा जनरेट करा"; return;
-            }
-            
-            // ID कॉलमचे नाव ओळखणे
-            let colId = 'id'; // Default
-            if (sample[0].hasOwnProperty('Question ID')) colId = 'Question ID';
-            else if (sample[0].hasOwnProperty('question_id')) colId = 'question_id';
-            
-            const colSubj = sample[0].hasOwnProperty('Subject') ? 'Subject' : 'subject';
-            const colChap = sample[0].hasOwnProperty('Chapter') ? 'Chapter' : 'chapter';
+            // २. अचूक कॉलम नावे (तुमच्या फोटोप्रमाणे फिक्स केली आहेत)
+            const colId = 'Question ID'; 
+            const colSubj = 'Subject';
+            const colChap = 'Chapter';
 
-            // ३. निवडलेल्या प्रकारानुसार प्रश्न फिल्टर करणे (Query Building)
-            let query = supabaseClient.from(TABLE_NAME).select(colId);
+            // ३. निवडलेल्या प्रकारानुसार प्रश्न फिल्टर करणे 
+            // (टीप: स्पेस असलेल्या कॉलमला डबल कोट्स `""` मध्ये टाकणे आवश्यक आहे)
+            let query = supabaseClient.from(TABLE_NAME).select(`"${colId}"`);
 
             if (type === 'Subject') {
                 const selectedSubj = Array.from(document.querySelectorAll('#exam_subjects input:checked')).map(cb => cb.value);
@@ -666,6 +657,7 @@
             btn.innerText = "परीक्षा जनरेट करा";
         }
     }
+    
     async function logout() { await supabaseClient.auth.signOut(); window.location.href = "index.html"; }
 
     checkAdmin();
