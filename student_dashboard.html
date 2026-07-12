@@ -57,18 +57,26 @@
         .btn-start { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; }
         .btn-analysis { background: var(--warning); color: #000; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; }
         
-        /* Pro Exam Interface */
-        .exam-layout { display: flex; height: calc(100vh - 60px); background: #f0f2f5; }
-        .exam-main { flex: 3; display: flex; flex-direction: column; padding: 20px; overflow-y: auto; }
-        .question-panel { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex-grow: 1; display: flex; flex-direction: column; }
-        .q-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 20px; font-weight: bold; font-size: 18px;}
+       /* Pro Exam Interface (Updated Layout) */
+        .exam-layout { display: flex; height: calc(100vh - 60px); background: #f0f2f5; overflow: hidden; }
+        .exam-main { flex: 3; display: flex; flex-direction: column; padding: 20px; overflow: hidden; }
+        .question-panel { background: white; padding: 25px 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+        
+        .q-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 15px; font-weight: bold; font-size: 18px; flex-shrink: 0; }
+        
+        /* नवीन: फक्त प्रश्नाचा भाग स्क्रोल करण्यासाठी (Scrollable Question Area) */
+        #single-question-container { flex-grow: 1; overflow-y: auto; padding-right: 15px; margin-bottom: 15px; padding-bottom: 10px; }
+        #single-question-container::-webkit-scrollbar { width: 6px; }
+        #single-question-container::-webkit-scrollbar-thumb { background-color: #CBD5E1; border-radius: 4px; }
+        
         .q-text { font-size: 18px; font-weight: 600; margin-bottom: 25px; color: #111827; line-height: 1.5; }
         .options-grid { display: flex; flex-direction: column; gap: 15px; }
         .option-label { display: flex; align-items: center; padding: 15px; border: 1px solid var(--border); border-radius: 8px; background: white; cursor: pointer; transition: 0.2s; font-size: 16px; font-weight: 500;}
         .option-label:hover { border-color: var(--primary); background: #EEF2FF; }
         .option-label input { margin-right: 15px; transform: scale(1.3); cursor: pointer;}
         
-        .nav-buttons { display: flex; justify-content: space-between; margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border); }
+        /* नवीन: बटणे तळाला फिक्स राहण्यासाठी (Sticky Nav Buttons) */
+        .nav-buttons { display: flex; justify-content: space-between; flex-shrink: 0; padding-top: 15px; border-top: 1px solid var(--border); }
         .btn-nav { padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; border: none; font-size: 15px;}
         .btn-prev { background: white; border: 1px solid var(--border); color: var(--text-main); }
         .btn-clear { background: white; border: 1px solid var(--danger); color: var(--danger); }
@@ -84,7 +92,7 @@
         .status-not-answered { background: var(--danger); color: white; border-color: var(--danger); }
         .status-not-visited { background: #F3F4F6; color: var(--text-muted); }
         .status-active { box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.4); border-color: var(--primary); }
-        
+                
         /* Analysis Modal */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; display: none; justify-content: center; align-items: center; padding: 20px;}
         .modal-content { background: white; width: 100%; max-width: 900px; max-height: 90vh; overflow-y: auto; border-radius: 12px; padding: 25px; position: relative; }
