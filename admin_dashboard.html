@@ -507,37 +507,62 @@
         document.getElementById('chapter_box').classList.toggle('hidden', type !== 'Chapter');
     }
 
+    // १. विषय (Subjects) लोड करताना कंसात प्रश्नांची संख्या दाखवणे
     async function fetchSubjects() {
         const { data } = await supabaseClient.from(TABLE_NAME).select('*').limit(1);
         if (data && data.length > 0) {
             const colName = data[0].hasOwnProperty('Subject') ? 'Subject' : 'subject';
             const { data: subjectData } = await supabaseClient.from(TABLE_NAME).select(colName);
-            const uniqueSubjects = [...new Set(subjectData.map(q => q[colName]).filter(Boolean))];
+            
+            // प्रत्येक विषयात किती प्रश्न आहेत मोजणे (Count Questions)
+            const subjectCounts = {};
+            subjectData.forEach(q => {
+                const subjName = q[colName];
+                if (subjName) {
+                    subjectCounts[subjName] = (subjectCounts[subjName] || 0) + 1;
+                }
+            });
+            
+            const uniqueSubjects = Object.keys(subjectCounts).sort();
+            
             document.getElementById('exam_subjects').innerHTML = uniqueSubjects.map((s, i) => `
                 <div class="checkbox-item" onclick="document.getElementById('subj_${i}').click();">
                     <input type="checkbox" value="${s}" id="subj_${i}" onclick="event.stopPropagation(); fetchChapters();" onchange="fetchChapters()">
-                    <label>${s}</label>
+                    <label>${s} <span style="color:var(--primary); font-weight:bold; font-size:13px; margin-left:4px;">(${subjectCounts[s]})</span></label>
                 </div>`).join('');
         }
     }
 
+    // २. चाप्टर (Chapters) लोड करताना कंसात प्रश्नांची संख्या दाखवणे
     async function fetchChapters() {
         const selected = Array.from(document.querySelectorAll('#exam_subjects input:checked')).map(cb => cb.value);
         if (selected.length === 0) { document.getElementById('exam_chapters').innerHTML = ""; return; }
+        
         const { data } = await supabaseClient.from(TABLE_NAME).select('*').limit(1);
         if (data && data.length > 0) {
             const colSubj = data[0].hasOwnProperty('Subject') ? 'Subject' : 'subject';
             const colChap = data[0].hasOwnProperty('Chapter') ? 'Chapter' : 'chapter';
+            
             const { data: chapData } = await supabaseClient.from(TABLE_NAME).select(colChap).in(colSubj, selected);
-            const uniqueChapters = [...new Set(chapData.map(q => q[colChap]).filter(Boolean))];
+            
+            // निवडलेल्या विषयांच्या प्रत्येक चाप्टरमध्ये किती प्रश्न आहेत मोजणे (Count Questions)
+            const chapterCounts = {};
+            chapData.forEach(q => {
+                const chapName = q[colChap];
+                if (chapName) {
+                    chapterCounts[chapName] = (chapterCounts[chapName] || 0) + 1;
+                }
+            });
+            
+            const uniqueChapters = Object.keys(chapterCounts).sort();
+            
             document.getElementById('exam_chapters').innerHTML = uniqueChapters.map((c, i) => `
                 <div class="checkbox-item" onclick="document.getElementById('chap_${i}').click();">
                     <input type="checkbox" value="${c}" id="chap_${i}" onclick="event.stopPropagation();">
-                    <label>${c}</label>
+                    <label>${c} <span style="color:var(--danger); font-weight:bold; font-size:13px; margin-left:4px;">(${chapterCounts[c]})</span></label>
                 </div>`).join('');
         }
     }
-
     async function createExam() {
         const btn = document.getElementById('exam-submit-btn');
         const title = document.getElementById('exam_title').value.trim(); 
