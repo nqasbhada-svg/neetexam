@@ -578,6 +578,7 @@
         btn.innerText = "प्रक्रिया सुरू आहे...";
 
         try {
+            // १. डुप्लिकेट परीक्षेचे नाव तपासणे
             const { data: existingExams, error: checkError } = await supabaseClient.from('exams').select('id').eq('exam_title', title);
             if (checkError) throw checkError;
             if (existingExams && existingExams.length > 0) {
@@ -585,19 +586,63 @@
                 btn.disabled = false; btn.innerText = "परीक्षा जनरेट करा"; return;
             }
 
-            let query = supabaseClient.from(TABLE_NAME).select('Question ID'); 
-            const { data: allQuestions } = await query;
+            // २. डेटाबेसमधील कॉलम्सची अचूक नावे शोधणे (Auto-detect columns)
+            const { data: sample } = await supabaseClient.from(TABLE_NAME).select('*').limit(1);
+            if (!sample || sample.length === 0) {
+                showToast("डेटाबेसमध्ये कोणतेही प्रश्न नाहीत!", "error");
+                btn.disabled = false; btn.innerText = "परीक्षा जनरेट करा"; return;
+            }
             
-            if(!allQuestions || allQuestions.length < qCount) { 
-                showToast("पुरेसे प्रश्न उपलब्ध नाहीत!", "error");
+            // ID कॉलमचे नाव ओळखणे
+            let colId = 'id'; // Default
+            if (sample[0].hasOwnProperty('Question ID')) colId = 'Question ID';
+            else if (sample[0].hasOwnProperty('question_id')) colId = 'question_id';
+            
+            const colSubj = sample[0].hasOwnProperty('Subject') ? 'Subject' : 'subject';
+            const colChap = sample[0].hasOwnProperty('Chapter') ? 'Chapter' : 'chapter';
+
+            // ३. निवडलेल्या प्रकारानुसार प्रश्न फिल्टर करणे (Query Building)
+            let query = supabaseClient.from(TABLE_NAME).select(colId);
+
+            if (type === 'Subject') {
+                const selectedSubj = Array.from(document.querySelectorAll('#exam_subjects input:checked')).map(cb => cb.value);
+                if (selectedSubj.length === 0) { 
+                    showToast("कृपया किमान एक विषय निवडा.", "error"); 
+                    btn.disabled = false; btn.innerText = "परीक्षा जनरेट करा"; return; 
+                }
+                query = query.in(colSubj, selectedSubj);
+                
+            } else if (type === 'Chapter') {
+                const selectedChap = Array.from(document.querySelectorAll('#exam_chapters input:checked')).map(cb => cb.value);
+                if (selectedChap.length === 0) { 
+                    showToast("कृपया किमान एक चाप्टर निवडा.", "error"); 
+                    btn.disabled = false; btn.innerText = "परीक्षा जनरेट करा"; return; 
+                }
+                query = query.in(colChap, selectedChap);
+            }
+
+            // ४. डेटाबेसमधून प्रश्न आणणे
+            const { data: allQuestions, error: fetchError } = await query;
+            if (fetchError) throw fetchError;
+            
+            // जर पुरेसे प्रश्न नसतील तर अचूक आकडा दाखवणे
+            if (!allQuestions || allQuestions.length < qCount) { 
+                const foundCount = allQuestions ? allQuestions.length : 0;
+                showToast(`पुरेसे प्रश्न उपलब्ध नाहीत! (फिल्टरनुसार फक्त ${foundCount} प्रश्न सापडले)`, "error");
                 btn.disabled = false; btn.innerText = "परीक्षा जनरेट करा"; return; 
             }
 
+            // ५. रँडम प्रश्न निवडणे
             const shuffled = allQuestions.sort(() => 0.5 - Math.random());
-            const selectedIds = shuffled.slice(0, qCount).map(q => q['Question ID']);
+            const selectedIds = shuffled.slice(0, qCount).map(q => q[colId]);
 
+            // ६. परीक्षा सेव्ह करणे
             const { error: insertError } = await supabaseClient.from('exams').insert([{ 
-                exam_title: title, exam_type: type, total_questions: qCount, valid_until: valid, selected_question_ids: selectedIds
+                exam_title: title, 
+                exam_type: type, 
+                total_questions: qCount, 
+                valid_until: valid, 
+                selected_question_ids: selectedIds
             }]);
 
             if (insertError) throw insertError;
@@ -605,6 +650,13 @@
             showToast("परीक्षा यशस्वीरीत्या जनरेट झाली!");
             document.getElementById('exam_title').value = "";
             document.getElementById('total_questions').value = "";
+            
+            // सर्व चेकबॉक्स अनचेक करणे
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            document.getElementById('subject_box').classList.add('hidden');
+            document.getElementById('chapter_box').classList.add('hidden');
+            document.getElementById('exam_type').value = "Monthly";
+            
             fetchExamsList();
 
         } catch (err) {
@@ -614,7 +666,6 @@
             btn.innerText = "परीक्षा जनरेट करा";
         }
     }
-
     async function logout() { await supabaseClient.auth.signOut(); window.location.href = "index.html"; }
 
     checkAdmin();
