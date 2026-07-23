@@ -559,57 +559,81 @@
     }
 
     // २. चाप्टर (Chapters) लोड करताना कंसात प्रश्नांची संख्या दाखवणे
+   // चाप्टर (Chapters) आणि त्यातील उपलब्ध प्रश्नांची संख्या दाखवणे
     async function fetchChapters() {
-    const selectedSubjects = Array.from(document.querySelectorAll('#exam_subjects input:checked')).map(cb => cb.value);
-    const container = document.getElementById('exam_chapters');
-    
-    if (selectedSubjects.length === 0) { 
-        container.innerHTML = ""; 
-        return; 
-    }
-
-    // १. सुपाबेस मधून Subject आणि Chapter दोन्ही माहिती काढा
-    const { data } = await supabaseClient
-        .from(TABLE_NAME)
-        .select('Subject, Chapter')
-        .in('Subject', selectedSubjects);
-
-    if (!data || data.length === 0) return;
-
-    // २. चाप्टर्सना विषयानुसार ग्रुप करा (Grouping Logic)
-    const groupedData = data.reduce((acc, item) => {
-        const subj = item.Subject;
-        const chap = item.Chapter;
-        if (!acc[subj]) acc[subj] = new Set(); // Set मुळे डुप्लिकेट चाप्टर येणार नाहीत
-        acc[subj].add(chap);
-        return acc;
-    }, {});
-
-    // ३. HTML तयार करा
-    let html = "";
-    for (const [subj, chapters] of Object.entries(groupedData)) {
-        html += `
-            <div style="margin-bottom: 15px; width: 100%;">
-                <h4 style="color: var(--primary); margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px;">${subj}</h4>
-                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px;">
-        `;
+        const selectedSubjects = Array.from(document.querySelectorAll('#exam_subjects input:checked')).map(cb => cb.value);
+        const container = document.getElementById('exam_chapters');
         
-        // प्रत्येक विषयाचे चाप्टर्स
-        Array.from(chapters).forEach((chap, i) => {
-            const id = `chap_${subj.replace(/\s+/g, '')}_${i}`; // युनिक आयडी तयार करा
-            html += `
-                <div class="checkbox-item" onclick="document.getElementById('${id}').click();">
-                    <input type="checkbox" value="${chap}" id="${id}" onclick="event.stopPropagation();">
-                    <label>${chap}</label>
-                </div>
-            `;
-        });
-        
-        html += `</div></div>`;
-    }
+        if (selectedSubjects.length === 0) { 
+            container.innerHTML = ""; 
+            return; 
+        }
 
-    container.innerHTML = html;
-}
+        container.innerHTML = "<p style='color:var(--text-muted); font-size:13px;'>चाप्टर्स लोड होत आहेत...</p>";
+
+        try {
+            // १. ५००० पर्यंत सर्व प्रश्न फेच करा (1000 ची मर्यादा बायपास करण्यासाठी .limit(5000) जोडले आहे)
+            const { data, error } = await supabaseClient
+                .from(TABLE_NAME)
+                .select('*')
+                .limit(5000);
+
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                container.innerHTML = "<p style='color:red;'>कोणताही डेटा सापडला नाही.</p>";
+                return;
+            }
+
+            // २. कॉलमची नावे डिटेक्ट करा (Subject/subject, Chapter/chapter)
+            const colSubj = data[0].hasOwnProperty('Subject') ? 'Subject' : 'subject';
+            const colChap = data[0].hasOwnProperty('Chapter') ? 'Chapter' : 'chapter';
+
+            // निवडलेल्या विषयांचेच प्रश्न फिल्टर करा
+            const filteredData = data.filter(item => selectedSubjects.includes(item[colSubj]));
+
+            // ३. चाप्टर्सना विषयानुसार ग्रुप करा आणि प्रत्येक चाप्टरचे प्रश्न मोजा (Counting)
+            const groupedData = {};
+            filteredData.forEach(item => {
+                const subj = item[colSubj];
+                const chap = item[colChap];
+                if (subj && chap) {
+                    if (!groupedData[subj]) groupedData[subj] = {};
+                    groupedData[subj][chap] = (groupedData[subj][chap] || 0) + 1;
+                }
+            });
+
+            // ४. सुटसुटीत HTML तयार करा
+            let html = "";
+            for (const [subj, chaptersObj] of Object.entries(groupedData)) {
+                html += `
+                    <div style="margin-bottom: 15px; width: 100%;">
+                        <h4 style="color: var(--primary); margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px;">${subj}</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;">
+                `;
+                
+                const sortedChaps = Object.keys(chaptersObj).sort();
+                sortedChaps.forEach((chap, i) => {
+                    const count = chaptersObj[chap];
+                    const cleanSubj = subj.replace(/[^a-zA-Z0-9]/g, '');
+                    const id = `chap_${cleanSubj}_${i}`;
+                    
+                    html += `
+                        <div class="checkbox-item" onclick="document.getElementById('${id}').click();">
+                            <input type="checkbox" value="${chap}" id="${id}" onclick="event.stopPropagation();">
+                            <label style="cursor:pointer;">${chap} <span style="color:var(--primary); font-weight:bold; font-size:13px; margin-left:4px;">(${count})</span></label>
+                        </div>
+                    `;
+                });
+                
+                html += `</div></div>`;
+            }
+
+            container.innerHTML = html || "<p style='color:red;'>निवडलेल्या विषयांत कोणतेही चाप्टर सापडले नाहीत.</p>";
+
+        } catch (err) {
+            container.innerHTML = `<p style='color:red;'>चूक: ${err.message}</p>`;
+        }
+    }
     async function createExam() {
         const btn = document.getElementById('exam-submit-btn');
         const title = document.getElementById('exam_title').value.trim(); 
