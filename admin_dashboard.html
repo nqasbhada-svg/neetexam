@@ -49,17 +49,13 @@
             margin-bottom: 24px;
         }
 
-        /* --- नवीन लेआउट बदल (Layout Fix) --- */
-        #pending-card {
-            flex: 1;
-        }
-        #create-exam-card {
-            flex: 1.8; /* याला जास्त जागा मिळेल */
-        }
+        #pending-card { flex: 1; }
+        #create-exam-card { flex: 1.8; }
+        #bot-control-card { width: 100%; flex: 100%; } /* नवीन बॉट कार्डसाठी */
+        
         @media (max-width: 1024px) {
             .flex-row { flex-direction: column; }
         }
-        /* ----------------------------------- */
 
         .card-header { font-size: 18px; font-weight: 600; margin-bottom: 20px; border-bottom: 2px solid var(--border); padding-bottom: 10px; }
 
@@ -89,14 +85,17 @@
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; display: none; justify-content: center; align-items: center; padding: 20px;}
         .modal-content { background: white; width: 100%; max-width: 900px; max-height: 90vh; overflow-y: auto; border-radius: 12px; padding: 25px; position: relative; }
         .close-btn { position: absolute; top: 15px; right: 20px; font-size: 28px; cursor: pointer; color: var(--danger); font-weight: bold; }
-        .analysis-box { margin-bottom: 20px; padding: 15px; border: 1px solid var(--border); border-radius: 8px; }
-        .ans-explanation { background: #F3F4F6; padding: 12px; border-radius: 6px; margin-top: 10px; font-size: 14px; border-left: 4px solid var(--warning); }
-
+        
         #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 6px; padding: 16px; position: fixed; right: 30px; top: 30px; z-index: 1000; opacity: 0; transition: 0.3s; }
         #toast.show { visibility: visible; opacity: 1; top: 50px; }
         #toast.success { background-color: var(--success); }
         #toast.error { background-color: var(--danger); }
         .hidden { display: none !important; }
+        
+        /* Bot Control Styles */
+        .bot-radio-label { display: inline-flex; align-items: center; margin-right: 20px; cursor: pointer; padding: 10px 15px; border: 1px solid var(--border); border-radius: 8px; transition: 0.2s; }
+        .bot-radio-label:hover { border-color: var(--primary); background: #EEF2FF; }
+        .bot-radio-label input { width: auto; margin-right: 10px; margin-top: 0; }
     </style>
 </head>
 <body>
@@ -117,8 +116,48 @@
         
         <!-- १. डॅशबोर्ड -->
         <div id="tab-dashboard" class="tab-content active">
+            
+            <!-- 🚀 नवीन ॲड केलेले: AI Bot Control Card -->
+            <div class="card" id="bot-control-card">
+                <h3 class="card-header">🤖 AI Bot Control (प्रश्न निर्मिती नियंत्रण)</h3>
+                
+                <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; margin-bottom: 15px;">
+                    <!-- Live Stats -->
+                    <div style="background: #F9FAFB; padding: 20px; border-radius: 8px; flex: 1; border: 1px solid var(--border); min-width: 250px; text-align: center;">
+                        <h4 style="margin-bottom: 10px; color: var(--text-muted); font-size: 15px;">एकूण जनरेट झालेले प्रश्न</h4>
+                        <h2 id="total-bot-count" style="color: var(--primary); font-size: 36px; margin:0;">लोड होत आहे...</h2>
+                        <button onclick="fetchBotStats()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; margin-top:5px; text-decoration:underline; font-size:12px;">🔄 रिफ्रेश करा</button>
+                    </div>
+                    
+                    <!-- Controls -->
+                    <div style="flex: 2; min-width: 300px;">
+                        <label style="font-weight: 600; margin-bottom: 12px; display: block; font-size: 15px;">बॉटचा मोड निवडा (Bot Mode):</label>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                            <label class="bot-radio-label">
+                                <input type="radio" name="bot_mode" value="Auto" id="mode-auto" onchange="toggleBotModeUI()"> 
+                                <div><strong>Auto Mode</strong><br><span style="font-size: 12px; color: var(--text-muted);">AI स्वतः वेटेजनुसार चॅप्टर निवडेल</span></div>
+                            </label>
+                            <label class="bot-radio-label">
+                                <input type="radio" name="bot_mode" value="Manual" id="mode-manual" onchange="toggleBotModeUI()"> 
+                                <div><strong>Manual Mode</strong><br><span style="font-size: 12px; color: var(--text-muted);">तुम्ही दिलेलाच चॅप्टर बनवेल</span></div>
+                            </label>
+                        </div>
+
+                        <!-- Dropdown (फक्त Manual साठी दिसेल) -->
+                        <div id="manual-chapter-container" class="hidden" style="margin-top: 15px; background: #FEF3C7; padding: 15px; border-radius: 8px; border-left: 4px solid var(--warning);">
+                            <label style="font-weight: 600;">कोणत्या चॅप्टरचे प्रश्न बनवायचे आहेत? (Manual Chapter)</label>
+                            <select id="bot_chapter_select" style="max-width: 100%; border: 1px solid #D97706;">
+                                <option value="None">-- Select Chapter --</option>
+                            </select>
+                        </div>
+                        
+                        <button class="submit-btn" onclick="saveBotSettings()" style="margin-top: 15px;">✅ सेटिंग्ज सेव्ह करा</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- जुने डॅशबोर्ड कार्ड्स -->
             <div class="flex-row">
-                <!-- प्रलंबित विद्यार्थी कार्ड (येथे id="pending-card" दिला आहे) -->
                 <div class="card" id="pending-card">
                     <h3 class="card-header">प्रलंबित विद्यार्थी (Pending Approvals)</h3>
                     <table>
@@ -127,7 +166,6 @@
                     </table>
                 </div>
 
-                <!-- नवीन परीक्षा तयार करा कार्ड (येथे id="create-exam-card" दिला आहे) -->
                 <div class="card" id="create-exam-card">
                     <h3 class="card-header">नवीन परीक्षा तयार करा</h3>
                     <div class="form-group"><label>परीक्षेचे नाव</label><input type="text" id="exam_title"></div>
@@ -224,12 +262,21 @@
     <div id="toast"></div>
 
 <script>
+    // --- SUPABASE SETUP ---
     const SUPABASE_URL = 'https://rabujuzuycdkxalyelcd.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_6xnlWswPyQ_BbzKySdHGAw_waSsMuf0';
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const TABLE_NAME = 'NEET QUESTION BANK';
 
-    let mySavedAdminResultsData = []; // Admin साठी विद्यार्थ्याचे सर्व निकाल सेव्ह करण्यासाठी
+    let mySavedAdminResultsData = []; 
+
+    // --- NEET Syllabus Chapters (For Bot Manual Control) ---
+    const allNeetChapters = [
+        "Physics and Measurement", "Kinematics", "Laws of Motion", "Work, Energy and Power", "System of Particles and Rotational Motion", "Gravitation", "Properties of Solids and Liquids", "Thermodynamics", "Kinetic Theory of Gases", "Oscillations", "Waves", "Electrostatics", "Current Electricity", "Magnetic Effects of Current and Magnetism", "Electromagnetic Induction and Alternating Currents", "Electromagnetic Waves", "Optics (Ray Optics and Wave Optics)", "Dual Nature of Matter and Radiation", "Atoms and Nuclei", "Electronic Devices (Semiconductor Electronics)", "Experimental Skills",
+        "Some Basic Concepts of Chemistry", "Structure of Atom", "Classification of Elements and Periodicity in Properties", "Chemical Bonding and Molecular Structure", "States of Matter", "Equilibrium", "Redox Reactions", "Hydrogen", "s-Block Elements", "Some p-Block Elements", "Organic Chemistry – Some Basic Principles and Techniques", "Hydrocarbons", "Environmental Chemistry", "Solutions", "Electrochemistry", "Chemical Kinetics", "d- and f-Block Elements", "Coordination Compounds", "Haloalkanes and Haloarenes", "Alcohols, Phenols and Ethers", "Aldehydes, Ketones and Carboxylic Acids", "Amines", "Biomolecules", "Polymers", "Chemistry in Everyday Life",
+        "The Living World", "Biological Classification", "Plant Kingdom", "Morphology of Flowering Plants", "Anatomy of Flowering Plants", "Cell: The Unit of Life", "Cell Cycle and Cell Division", "Transport in Plants", "Mineral Nutrition", "Photosynthesis in Higher Plants", "Respiration in Plants", "Plant Growth and Development", "Reproduction in Organisms", "Sexual Reproduction in Flowering Plants", "Principles of Inheritance and Variation", "Molecular Basis of Inheritance", "Strategies for Enhancement in Food Production", "Microbes in Human Welfare", "Organisms and Populations", "Ecosystem", "Biodiversity and Conservation", "Environmental Issues",
+        "Animal Kingdom", "Structural Organisation in Animals", "Biomolecules", "Digestion and Absorption", "Breathing and Exchange of Gases", "Body Fluids and Circulation", "Excretory Products and Their Elimination", "Locomotion and Movement", "Neural Control and Coordination", "Chemical Coordination and Integration", "Human Reproduction", "Reproductive Health", "Evolution", "Human Health and Disease", "Biotechnology: Principles and Processes", "Biotechnology and Its Applications"
+    ];
 
     function showToast(message, type = 'success') {
         const toast = document.getElementById("toast");
@@ -249,14 +296,89 @@
         if(tabId === 'tab-reports') loadStudentsDropdown();
     }
 
+    // --- INITIALIZATION ---
     async function checkAdmin() {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session) { window.location.href = "index.html"; return; }
         const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', session.user.id).single();
         if (!profile || profile.role !== 'admin') { window.location.href = "index.html"; } 
-        else { fetchPendingStudents(); fetchSubjects(); }
+        else { 
+            fetchPendingStudents(); 
+            fetchSubjects();
+            
+            // Bot Control Initialization
+            populateBotChapters();
+            fetchBotStats();
+            fetchBotSettings();
+        }
     }
 
+    // ==========================================
+    // 🤖 AI BOT CONTROL LOGIC (NEW)
+    // ==========================================
+    function populateBotChapters() {
+        const select = document.getElementById('bot_chapter_select');
+        allNeetChapters.sort().forEach(chap => {
+            const opt = document.createElement('option');
+            opt.value = chap;
+            opt.textContent = chap;
+            select.appendChild(opt);
+        });
+    }
+
+    async function fetchBotStats() {
+        document.getElementById('total-bot-count').innerText = "लोडिंग...";
+        const { count, error } = await supabaseClient
+            .from(TABLE_NAME)
+            .select('*', { count: 'exact', head: true });
+        
+        if (!error) document.getElementById('total-bot-count').innerText = count || 0;
+        else document.getElementById('total-bot-count').innerText = "Error";
+    }
+
+    async function fetchBotSettings() {
+        const { data, error } = await supabaseClient.from('bot_control').select('*').eq('id', 1).single();
+        if (data && !error) {
+            if (data.mode === 'Manual') {
+                document.getElementById('mode-manual').checked = true;
+                document.getElementById('bot_chapter_select').value = data.manual_chapter || 'None';
+            } else {
+                document.getElementById('mode-auto').checked = true;
+            }
+            toggleBotModeUI();
+        }
+    }
+
+    function toggleBotModeUI() {
+        const isManual = document.getElementById('mode-manual').checked;
+        const container = document.getElementById('manual-chapter-container');
+        if(isManual) container.classList.remove('hidden');
+        else container.classList.add('hidden');
+    }
+
+    async function saveBotSettings() {
+        const selectedMode = document.querySelector('input[name="bot_mode"]:checked').value;
+        const selectedChapter = selectedMode === 'Manual' ? document.getElementById('bot_chapter_select').value : 'None';
+
+        if(selectedMode === 'Manual' && selectedChapter === 'None') {
+            showToast("कृपया मॅन्युअल मोडसाठी चॅप्टर निवडा!", "error");
+            return;
+        }
+
+        const { error } = await supabaseClient
+            .from('bot_control')
+            .update({ mode: selectedMode, manual_chapter: selectedChapter })
+            .eq('id', 1);
+
+        if (!error) {
+            showToast("✅ बॉट सेटिंग्ज यशस्वीरीत्या सेव्ह झाल्या!");
+        } else {
+            showToast("चूक: " + error.message, "error");
+        }
+    }
+    // ==========================================
+
+    // --- OTHER EXISTING ADMIN FUNCTIONS ---
     async function fetchPendingStudents() {
         const { data, error } = await supabaseClient.from('profiles').select('*').eq('role', 'student').eq('is_active', false);
         const tbody = document.getElementById('pending-students-list');
@@ -341,9 +463,8 @@
             return;
         }
 
-        mySavedAdminResultsData = results; // Save for modal
+        mySavedAdminResultsData = results; 
 
-        // परीक्षेचे नाव (Exam Title) आणण्यासाठी
         const examIds = [...new Set(results.map(r => r.exam_id).filter(id => id != null))];
         let examMap = {};
         if (examIds.length > 0) {
@@ -379,12 +500,9 @@
         }).join('');
     }
 
-    // ग्लोबल व्हेरिएबल (क्लिक केलेल्या प्रश्नाचा डेटा ठेवण्यासाठी)
     window.currentAnalysisData = [];
 
-    // १. मुख्य विश्लेषण पॉप-अप उघडणे
     function openAnalysis(index) {
-        // ॲडमिन आणि स्टुडंट दोन्हीसाठी चालणारा कोड
         const result = (typeof mySavedAdminResultsData !== 'undefined' && mySavedAdminResultsData.length > 0) 
                      ? mySavedAdminResultsData[index] 
                      : mySavedResultsData[index];
@@ -392,9 +510,8 @@
         const data = result.response_data;
         if(!data || data.length === 0) return;
 
-        window.currentAnalysisData = data; // डेटा ग्लोबल सेव्ह केला
+        window.currentAnalysisData = data;
 
-        // A. विषयनिहाय तक्ता बनवणे
         const stats = {};
         data.forEach((q) => {
             const subj = q.subject || "General";
@@ -428,18 +545,17 @@
         }
         html += `</tbody></table></div>`;
 
-        // B. रंगीत नंबर्सची ग्रिड (Question Palette)
         html += `<h3 style="margin-bottom: 10px; font-size: 15px;">🔢 प्रश्नाचे स्पष्टीकरण पाहण्यासाठी खालील क्रमांकावर क्लिक करा:</h3>`;
         html += `<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; max-height: 150px; overflow-y: auto; padding: 15px; background: #E5E7EB; border-radius: 8px;">`;
         
         data.forEach((q, i) => {
-            let bgColor = "#D1D5DB"; // सोडवला नाही (राखाडी)
+            let bgColor = "#D1D5DB"; 
             let textColor = "#374151";
             
             if(q.student_ans === q.correct_ans) {
-                bgColor = "var(--success)"; textColor = "white"; // बरोबर (हिरवा)
+                bgColor = "var(--success)"; textColor = "white"; 
             } else if(q.student_ans) {
-                bgColor = "var(--danger)"; textColor = "white"; // चूक (लाल)
+                bgColor = "var(--danger)"; textColor = "white"; 
             }
 
             html += `
@@ -451,17 +567,14 @@
         });
         html += `</div>`;
 
-        // C. प्रश्न, ऑप्शन्स आणि स्पष्टीकरण दाखवण्यासाठी रिकामी जागा
         html += `<div id="question-detail-view" style="border: 1px solid var(--border); border-radius: 8px; padding: 20px; background: white; min-height: 250px;"></div>`;
 
         document.getElementById('analysis-body').innerHTML = html;
         document.getElementById('analysis-modal').style.display = 'flex';
         
-        // पॉप-अप उघडल्यावर आपोआप पहिला प्रश्न दाखवणे
         showQuestionDetail(0);
     }
 
-    // २. क्लिक केलेल्या प्रश्नाचे डिटेल्स दाखवणे
     function showQuestionDetail(index) {
         const q = window.currentAnalysisData[index];
         if (!q) return;
@@ -477,7 +590,6 @@
             statusBadge = `<span class="badge" style="background:#E5E7EB; color:#374151; font-size:14px;">सोडवला नाही (0)</span>`; borderColor = "#9CA3AF";
         }
 
-        // ऑप्शन्स दाखवणे
         let optionsHtml = "";
         if(q.optA || q.optB || q.optC || q.optD) {
             optionsHtml = `
@@ -509,7 +621,6 @@
                 </div>
         `;
         
-        // जर उत्तर चुकले असेल किंवा सोडवले नसेल, तरच स्पष्टीकरण दाखवा
         if(q.student_ans !== q.correct_ans && q.explanation) {
             detailHtml += `
                 <div style="background: #FEF3C7; padding: 15px; border-radius: 8px; border-left: 4px solid var(--warning);">
@@ -520,9 +631,9 @@
         }
         detailHtml += `</div>`;
 
-        // तयार झालेला प्रश्न 'question-detail-view' या डब्यात दाखवा
         document.getElementById('question-detail-view').innerHTML = detailHtml;
     }
+    
     function closeAnalysis() { document.getElementById('analysis-modal').style.display = 'none'; }
 
     // --- Create Exam Filters & Submission ---
@@ -532,14 +643,12 @@
         document.getElementById('chapter_box').classList.toggle('hidden', type !== 'Chapter');
     }
 
-    // १. विषय (Subjects) लोड करताना कंसात प्रश्नांची संख्या दाखवणे
     async function fetchSubjects() {
         const { data } = await supabaseClient.from(TABLE_NAME).select('*').limit(1);
         if (data && data.length > 0) {
             const colName = data[0].hasOwnProperty('Subject') ? 'Subject' : 'subject';
             const { data: subjectData } = await supabaseClient.from(TABLE_NAME).select(colName);
             
-            // प्रत्येक विषयात किती प्रश्न आहेत मोजणे (Count Questions)
             const subjectCounts = {};
             subjectData.forEach(q => {
                 const subjName = q[colName];
@@ -558,8 +667,6 @@
         }
     }
 
-    // २. चाप्टर (Chapters) लोड करताना कंसात प्रश्नांची संख्या दाखवणे
-   // चाप्टर (Chapters) आणि त्यातील उपलब्ध प्रश्नांची संख्या दाखवणे
     async function fetchChapters() {
         const selectedSubjects = Array.from(document.querySelectorAll('#exam_subjects input:checked')).map(cb => cb.value);
         const container = document.getElementById('exam_chapters');
@@ -572,7 +679,6 @@
         container.innerHTML = "<p style='color:var(--text-muted); font-size:13px;'>चाप्टर्स लोड होत आहेत...</p>";
 
         try {
-            // १. ५००० पर्यंत सर्व प्रश्न फेच करा (1000 ची मर्यादा बायपास करण्यासाठी .limit(5000) जोडले आहे)
             const { data, error } = await supabaseClient
                 .from(TABLE_NAME)
                 .select('*')
@@ -584,14 +690,11 @@
                 return;
             }
 
-            // २. कॉलमची नावे डिटेक्ट करा (Subject/subject, Chapter/chapter)
             const colSubj = data[0].hasOwnProperty('Subject') ? 'Subject' : 'subject';
             const colChap = data[0].hasOwnProperty('Chapter') ? 'Chapter' : 'chapter';
 
-            // निवडलेल्या विषयांचेच प्रश्न फिल्टर करा
             const filteredData = data.filter(item => selectedSubjects.includes(item[colSubj]));
 
-            // ३. चाप्टर्सना विषयानुसार ग्रुप करा आणि प्रत्येक चाप्टरचे प्रश्न मोजा (Counting)
             const groupedData = {};
             filteredData.forEach(item => {
                 const subj = item[colSubj];
@@ -602,7 +705,6 @@
                 }
             });
 
-            // ४. सुटसुटीत HTML तयार करा
             let html = "";
             for (const [subj, chaptersObj] of Object.entries(groupedData)) {
                 html += `
@@ -634,6 +736,7 @@
             container.innerHTML = `<p style='color:red;'>चूक: ${err.message}</p>`;
         }
     }
+
     async function createExam() {
         const btn = document.getElementById('exam-submit-btn');
         const title = document.getElementById('exam_title').value.trim(); 
@@ -649,7 +752,6 @@
         btn.innerText = "प्रक्रिया सुरू आहे...";
 
         try {
-            // १. डुप्लिकेट परीक्षेचे नाव तपासणे
             const { data: existingExams, error: checkError } = await supabaseClient.from('exams').select('id').eq('exam_title', title);
             if (checkError) throw checkError;
             if (existingExams && existingExams.length > 0) {
@@ -657,13 +759,10 @@
                 btn.disabled = false; btn.innerText = "परीक्षा जनरेट करा"; return;
             }
 
-            // २. अचूक कॉलम नावे (तुमच्या फोटोप्रमाणे फिक्स केली आहेत)
             const colId = 'Question ID'; 
             const colSubj = 'Subject';
             const colChap = 'Chapter';
 
-            // ३. निवडलेल्या प्रकारानुसार प्रश्न फिल्टर करणे 
-            // (टीप: स्पेस असलेल्या कॉलमला डबल कोट्स `""` मध्ये टाकणे आवश्यक आहे)
             let query = supabaseClient.from(TABLE_NAME).select(`"${colId}"`);
 
             if (type === 'Subject') {
@@ -683,22 +782,18 @@
                 query = query.in(colChap, selectedChap);
             }
 
-            // ४. डेटाबेसमधून प्रश्न आणणे
             const { data: allQuestions, error: fetchError } = await query;
             if (fetchError) throw fetchError;
             
-            // जर पुरेसे प्रश्न नसतील तर अचूक आकडा दाखवणे
             if (!allQuestions || allQuestions.length < qCount) { 
                 const foundCount = allQuestions ? allQuestions.length : 0;
                 showToast(`पुरेसे प्रश्न उपलब्ध नाहीत! (फिल्टरनुसार फक्त ${foundCount} प्रश्न सापडले)`, "error");
                 btn.disabled = false; btn.innerText = "परीक्षा जनरेट करा"; return; 
             }
 
-            // ५. रँडम प्रश्न निवडणे
             const shuffled = allQuestions.sort(() => 0.5 - Math.random());
             const selectedIds = shuffled.slice(0, qCount).map(q => q[colId]);
 
-            // ६. परीक्षा सेव्ह करणे
             const { error: insertError } = await supabaseClient.from('exams').insert([{ 
                 exam_title: title, 
                 exam_type: type, 
@@ -713,7 +808,6 @@
             document.getElementById('exam_title').value = "";
             document.getElementById('total_questions').value = "";
             
-            // सर्व चेकबॉक्स अनचेक करणे
             document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
             document.getElementById('subject_box').classList.add('hidden');
             document.getElementById('chapter_box').classList.add('hidden');
