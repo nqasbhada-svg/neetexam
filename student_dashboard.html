@@ -12,6 +12,9 @@
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
 
+    <!-- SmilesDrawer JS (Chemistry Structures साठी) - ही लिंक इथे Head मध्ये असायला हवी -->
+    <script src="https://unpkg.com/smiles-drawer@1.0.10/dist/smiles-drawer.min.js"></script>
+
     <style>
         :root {
             --primary: #4F46E5; --primary-hover: #4338CA;
@@ -64,7 +67,6 @@
         
         .q-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 15px; font-weight: bold; font-size: 18px; flex-shrink: 0; }
         
-        /* नवीन: फक्त प्रश्नाचा भाग स्क्रोल करण्यासाठी (Scrollable Question Area) */
         #single-question-container { flex-grow: 1; overflow-y: auto; padding-right: 15px; margin-bottom: 15px; padding-bottom: 10px; }
         #single-question-container::-webkit-scrollbar { width: 6px; }
         #single-question-container::-webkit-scrollbar-thumb { background-color: #CBD5E1; border-radius: 4px; }
@@ -75,7 +77,6 @@
         .option-label:hover { border-color: var(--primary); background: #EEF2FF; }
         .option-label input { margin-right: 15px; transform: scale(1.3); cursor: pointer;}
         
-        /* नवीन: बटणे तळाला फिक्स राहण्यासाठी (Sticky Nav Buttons) */
         .nav-buttons { display: flex; justify-content: space-between; flex-shrink: 0; padding-top: 15px; border-top: 1px solid var(--border); }
         .btn-nav { padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; border: none; font-size: 15px;}
         .btn-prev { background: white; border: 1px solid var(--border); color: var(--text-main); }
@@ -207,7 +208,7 @@
     const SUPABASE_KEY = 'sb_publishable_6xnlWswPyQ_BbzKySdHGAw_waSsMuf0';
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const TABLE_NAME = 'NEET QUESTION BANK';
-    <script src="https://unpkg.com/smiles-drawer@1.0.10/dist/smiles-drawer.min.js"></script>
+    
     let currentStudentId = null;
     let currentExamData = null;
     let examQuestions = [];
@@ -220,26 +221,17 @@
     let studentResponses = {}; 
     let questionStatuses = []; 
 
-    // --- नवीन: प्रश्नांचा फॉरमॅट नीट करण्यासाठी स्मार्ट फंक्शन ---
+    // --- प्रश्नांचा फॉरमॅट नीट करण्यासाठी स्मार्ट फंक्शन ---
     function formatQuestionText(text) {
         if (!text) return "";
-        
-        // १. डेटाबेसमध्ये आधीच \n (Enter) असेल, तर त्याला <br> मध्ये बदलणे
         let formatted = text.replace(/\n/g, "<br>");
-        
-        // २. Statement I आणि Statement II ला नवीन ओळीवर घेणे आणि रंगीत करणे
         formatted = formatted.replace(/\b(Statement\s*[-]?\s*I\b[:\.]?\s*)/g, "<br><br><strong style='color:var(--primary);'>$1</strong> ");
         formatted = formatted.replace(/\b(Statement\s*[-]?\s*II\b[:\.]?\s*)/g, "<br><br><strong style='color:var(--primary);'>$1</strong> ");
         formatted = formatted.replace(/\b(Statement\s*[-]?\s*1\b[:\.]?\s*)/g, "<br><br><strong style='color:var(--primary);'>$1</strong> ");
         formatted = formatted.replace(/\b(Statement\s*[-]?\s*2\b[:\.]?\s*)/g, "<br><br><strong style='color:var(--primary);'>$1</strong> ");
-        
-        // ३. Assertion (A) आणि Reason (R) साठी सुद्धा
         formatted = formatted.replace(/\b(Assertion\s*\(?A\)?\s*[:\.])/gi, "<br><br><strong style='color:var(--danger);'>$1</strong> ");
         formatted = formatted.replace(/\b(Reason\s*\(?R\)?\s*[:\.])/gi, "<br><br><strong style='color:var(--success);'>$1</strong> ");
-
-        // जर वाक्याच्या सुरुवातीलाच <br> आले असतील तर ते काढणे
         formatted = formatted.replace(/^(<br>\s*)+/, "");
-        
         return formatted;
     }
 
@@ -324,11 +316,22 @@
         const q = examQuestions[currentQuestionIndex];
         const isCap = q.hasOwnProperty('Option A');
         
+        // --- 1. SMILES Structure Logic ---
+        const smilesCode = q['Smiles'] || q['question_smiles'] || q['SMILES'] || null;
+        let structureHtml = "";
+        if (smilesCode) {
+            structureHtml = `
+                <div style="margin-bottom: 20px; text-align: center; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
+                    <canvas id="chem-canvas-${currentQuestionIndex}" width="300" height="200"></canvas>
+                </div>
+            `;
+        }
+
         // --- प्रश्नाला फॉरमॅट लावणे ---
         let rawQText = isCap ? q['Question'] : q['question'];
         const qText = formatQuestionText(rawQText);
         
-        // 1. Match the Column Rendering Logic
+        // 2. Match the Column Rendering Logic
         let questionHtml = `<div class="q-text">${currentQuestionIndex + 1}. ${qText}</div>`;
         
         const col1 = q['Column_I'] || q['Column I'] || null;
@@ -361,6 +364,7 @@
         const savedAns = studentResponses[currentQuestionIndex] || null;
 
         document.getElementById('single-question-container').innerHTML = `
+            ${structureHtml}
             ${questionHtml}
             <div class="options-grid">
                 <label class="option-label"><input type="radio" name="current_q" value="A" ${savedAns==='A'?'checked':''}> A) ${optA}</label>
@@ -376,7 +380,20 @@
             pal.innerHTML += `<button class="palette-btn status-${questionStatuses[i]} ${i === currentQuestionIndex ? 'status-active' : ''}" onclick="jumpToQuestion(${i})">${i + 1}</button>`;
         }
 
-        // 2. Render Math Formulas Using KaTeX
+        // --- 3. Draw SMILES Structure on Canvas ---
+        if (smilesCode) {
+            try {
+                let options = { width: 300, height: 200, bondThickness: 1.5, fontSizeLarge: 14 };
+                let smilesDrawer = new SmilesDrawer.Drawer(options);
+                SmilesDrawer.parse(smilesCode, function(tree) {
+                    smilesDrawer.draw(tree, `chem-canvas-${currentQuestionIndex}`, 'light', false);
+                });
+            } catch (err) {
+                console.error("Structure Draw Error:", err);
+            }
+        }
+
+        // 4. Render Math Formulas Using KaTeX
         if (typeof renderMathInElement === 'function') {
             renderMathInElement(document.getElementById('single-question-container'), {
                 delimiters: [
@@ -428,6 +445,7 @@
             const subject = q['Subject'] || q['subject'] || "General";
             const col1 = q['Column_I'] || q['Column I'] || null;
             const col2 = q['Column_II'] || q['Column II'] || null;
+            const smilesCode = q['Smiles'] || q['question_smiles'] || q['SMILES'] || null;
 
             if (!studentAns) unattempted++;
             else if (studentAns === correctAns) correct++;
@@ -435,6 +453,7 @@
 
             detailedAnalysisArray.push({
                 question: isCap ? q['Question'] : q['question'],
+                Smiles: smilesCode, // SMILES कोड निकालासाठी सेव्ह केला
                 Column_I: col1,
                 Column_II: col2,
                 optA: isCap ? q['Option A'] : q['option a'] || q['option_a'],
@@ -607,6 +626,17 @@
             statusBadge = `<span class="badge" style="background:#E5E7EB; color:#374151; font-size:14px;">सोडवला नाही (0)</span>`; borderColor = "#9CA3AF";
         }
 
+        // --- 1. SMILES Structure Logic For Analysis View ---
+        const smilesCode = q.Smiles || q.question_smiles || null;
+        let structureHtml = "";
+        if (smilesCode) {
+            structureHtml = `
+                <div style="margin-bottom: 20px; text-align: center; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
+                    <canvas id="analysis-chem-canvas-${index}" width="300" height="200"></canvas>
+                </div>
+            `;
+        }
+
         // --- प्रश्नाला फॉरमॅट लावणे (Analysis View) ---
         let rawQTextAnalysis = q.question || q.Question;
         let formattedQTextAnalysis = formatQuestionText(rawQTextAnalysis);
@@ -655,6 +685,7 @@
                     ${statusBadge}
                 </div>
                 
+                ${structureHtml}
                 ${questionTextHtml}
                 
                 ${optionsHtml}
@@ -676,6 +707,19 @@
         detailHtml += `</div>`;
 
         document.getElementById('question-detail-view').innerHTML = detailHtml;
+
+        // --- 2. Draw SMILES Structure on Canvas for Analysis ---
+        if (smilesCode) {
+            try {
+                let options = { width: 300, height: 200, bondThickness: 1.5, fontSizeLarge: 14 };
+                let smilesDrawer = new SmilesDrawer.Drawer(options);
+                SmilesDrawer.parse(smilesCode, function(tree) {
+                    smilesDrawer.draw(tree, `analysis-chem-canvas-${index}`, 'light', false);
+                });
+            } catch (err) {
+                console.error("Analysis Structure Draw Error:", err);
+            }
+        }
 
         // Render Math Formulas in Analysis Model Using KaTeX
         if (typeof renderMathInElement === 'function') {
