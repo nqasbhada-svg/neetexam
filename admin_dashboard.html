@@ -122,10 +122,17 @@
                 
                 <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; margin-bottom: 15px;">
                     <!-- Live Stats -->
-                    <div style="background: #F9FAFB; padding: 20px; border-radius: 8px; flex: 1; border: 1px solid var(--border); min-width: 250px; text-align: center;">
-                        <h4 style="margin-bottom: 10px; color: var(--text-muted); font-size: 15px;">एकूण जनरेट झालेले प्रश्न</h4>
+                    <div style="background: #F9FAFB; padding: 20px; border-radius: 8px; flex: 1; border: 1px solid var(--border); min-width: 300px; text-align: center;">
+                        <h4 style="margin-bottom: 5px; color: var(--text-muted); font-size: 15px;">एकूण जनरेट झालेले प्रश्न</h4>
                         <h2 id="total-bot-count" style="color: var(--primary); font-size: 36px; margin:0;">लोड होत आहे...</h2>
                         <button onclick="fetchBotStats()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; margin-top:5px; text-decoration:underline; font-size:12px;">🔄 रिफ्रेश करा</button>
+                        
+                        <hr style="border:0; border-top:1px solid #E5E7EB; margin: 15px 0;">
+                        
+                        <h5 style="margin-bottom: 8px; color: var(--text-muted); font-size: 13px; text-align: left;">शेवटचे ४ अपडेट्स (Latest Generated):</h5>
+                        <div id="recent-generations-summary" style="text-align: left; font-size: 13px;">
+                            <p style="color: var(--text-muted); margin-left: 10px;">माहिती लोड होत आहे...</p>
+                        </div>
                     </div>
                     
                     <!-- Controls -->
@@ -314,13 +321,13 @@
             
             // Bot Control Initialization
             populateBotChapters();
-            fetchBotStats();
+            fetchBotStats(); // This now also calls fetchRecentGenerations()
             fetchBotSettings();
         }
     }
 
     // ==========================================
-    // 🤖 AI BOT CONTROL LOGIC (UPDATED FOR MULTIPLE)
+    // 🤖 AI BOT CONTROL LOGIC 
     // ==========================================
     function populateBotChapters() {
         const container = document.getElementById('bot_multiple_chapters');
@@ -344,14 +351,82 @@
         container.innerHTML = html;
     }
 
+    // 🚀 NEW: Fetch Bot Stats & Recent Summary
     async function fetchBotStats() {
         document.getElementById('total-bot-count').innerText = "लोडिंग...";
+        
+        // १. एकूण प्रश्नांची संख्या
         const { count, error } = await supabaseClient
             .from(TABLE_NAME)
             .select('*', { count: 'exact', head: true });
         
         if (!error) document.getElementById('total-bot-count').innerText = count || 0;
         else document.getElementById('total-bot-count').innerText = "Error";
+
+        // २. शेवटच्या ४ वेळेस जनरेट झालेल्या प्रश्नांची समरी
+        fetchRecentGenerations();
+    }
+
+    async function fetchRecentGenerations() {
+        const summaryContainer = document.getElementById('recent-generations-summary');
+        summaryContainer.innerHTML = '<p style="color: var(--text-muted); margin-left: 10px;">माहिती लोड होत आहे...</p>';
+
+        try {
+            // लेटेस्ट २०० प्रश्न घेऊन त्याचे Timestamp नुसार ग्रुप करणे
+            const { data, error } = await supabaseClient
+                .from(TABLE_NAME)
+                .select('Subject, Chapter, Timestamp')
+                .order('Timestamp', { ascending: false })
+                .limit(200);
+
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                summaryContainer.innerHTML = '<p style="color: var(--text-muted); margin-left: 10px;">अद्याप प्रश्न जनरेट झालेले नाहीत.</p>';
+                return;
+            }
+
+            // Timestamp नुसार ग्रुपिंग (उदा. {"2024-05-24 10:30:00": {subject: "Physics", count: 20}})
+            const batches = {};
+            data.forEach(row => {
+                const ts = row.Timestamp;
+                if(ts) {
+                    if (!batches[ts]) {
+                        batches[ts] = { subject: row.Subject, chapter: row.Chapter, count: 0 };
+                    }
+                    batches[ts].count++;
+                }
+            });
+
+            // Timestamps ला Latest To Oldest सॉर्ट करून पहिले ४ घेणे
+            const sortedTimestamps = Object.keys(batches).sort((a, b) => b.localeCompare(a)).slice(0, 4);
+
+            let html = '<ul style="margin-top:0; padding-left:20px; line-height: 1.8;">';
+            sortedTimestamps.forEach(ts => {
+                const b = batches[ts];
+                // तारखेचा फॉरमॅट स्वच्छ करणे
+                const tsDate = new Date(ts);
+                const displayDate = isNaN(tsDate) ? ts : tsDate.toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                
+                let subjectColor = "var(--text-main)";
+                if(b.subject === "Physics") subjectColor = "#3B82F6";
+                if(b.subject === "Chemistry") subjectColor = "#EF4444";
+                if(b.subject === "Botany") subjectColor = "#10B981";
+                if(b.subject === "Zoology") subjectColor = "#F59E0B";
+
+                html += `<li>
+                    <strong style="color:${subjectColor};">${b.subject}</strong>: <strong>${b.count} प्रश्न</strong> 
+                    <span style="color:var(--text-muted); font-size:11px; margin-left:5px;">(${displayDate})</span>
+                    <br><span style="font-size:11px; color:#6B7280;">↳ ${b.chapter}</span>
+                </li>`;
+            });
+            html += '</ul>';
+
+            summaryContainer.innerHTML = html;
+
+        } catch (err) {
+            console.error("Recent Stats Error:", err);
+            summaryContainer.innerHTML = '<p style="color: red; margin-left: 10px;">माहिती लोड करताना एरर आला.</p>';
+        }
     }
 
     async function fetchBotSettings() {
@@ -360,7 +435,6 @@
             if (data.mode === 'Manual') {
                 document.getElementById('mode-manual').checked = true;
                 
-                // चेकबॉक्सेस टिक करणे
                 if(data.manual_chapter && data.manual_chapter !== 'None') {
                     const savedChapters = data.manual_chapter.split(',').map(c => c.trim());
                     document.querySelectorAll('.bot-chap-checkbox').forEach(cb => {
