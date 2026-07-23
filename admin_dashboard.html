@@ -37,7 +37,30 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         .flex-row { display: flex; flex-wrap: wrap; gap: 24px; }
-        .card { background: var(--card-bg); padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); flex: 1; min-width: 320px; border: 1px solid var(--border); margin-bottom: 24px;}
+        
+        .card { 
+            background: var(--card-bg); 
+            padding: 24px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); 
+            flex: 1; 
+            min-width: 320px; 
+            border: 1px solid var(--border); 
+            margin-bottom: 24px;
+        }
+
+        /* --- नवीन लेआउट बदल (Layout Fix) --- */
+        #pending-card {
+            flex: 1;
+        }
+        #create-exam-card {
+            flex: 1.8; /* याला जास्त जागा मिळेल */
+        }
+        @media (max-width: 1024px) {
+            .flex-row { flex-direction: column; }
+        }
+        /* ----------------------------------- */
+
         .card-header { font-size: 18px; font-weight: 600; margin-bottom: 20px; border-bottom: 2px solid var(--border); padding-bottom: 10px; }
 
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -95,7 +118,8 @@
         <!-- १. डॅशबोर्ड -->
         <div id="tab-dashboard" class="tab-content active">
             <div class="flex-row">
-                <div class="card">
+                <!-- प्रलंबित विद्यार्थी कार्ड (येथे id="pending-card" दिला आहे) -->
+                <div class="card" id="pending-card">
                     <h3 class="card-header">प्रलंबित विद्यार्थी (Pending Approvals)</h3>
                     <table>
                         <thead><tr><th>नाव</th><th>मोबाईल नंबर</th><th>कृती</th></tr></thead>
@@ -103,7 +127,8 @@
                     </table>
                 </div>
 
-                <div class="card">
+                <!-- नवीन परीक्षा तयार करा कार्ड (येथे id="create-exam-card" दिला आहे) -->
+                <div class="card" id="create-exam-card">
                     <h3 class="card-header">नवीन परीक्षा तयार करा</h3>
                     <div class="form-group"><label>परीक्षेचे नाव</label><input type="text" id="exam_title"></div>
                     <div class="form-group"><label>प्रकार</label>
