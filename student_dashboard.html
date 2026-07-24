@@ -394,12 +394,15 @@
         }
 
         // 4. Render Math Formulas Using KaTeX
-        if (typeof renderMathInElement === 'function') {
+       if (typeof renderMathInElement === 'function') {
             renderMathInElement(document.getElementById('single-question-container'), {
                 delimiters: [
                     {left: "$$", right: "$$", display: true},
-                    {left: "\\(", right: "\\)", display: false}
-                ]
+                    {left: "$", right: "$", display: false}, // <-- ही नवीन लाईन ॲड केली आहे
+                    {left: "\\(", right: "\\)", display: false},
+                    {left: "\\[", right: "\\]", display: true}
+                ],
+                throwOnError: false // जर टायपिंगमध्ये चूक झाली तरी पेज क्रॅश होणार नाही
             });
         }
     }
