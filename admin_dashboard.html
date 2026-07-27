@@ -549,7 +549,7 @@
     }
 
     // --- Admin Scorecard & Analysis Logic ---
-    async function fetchStudentScorecard() {
+  async function fetchStudentScorecard() {
         const studentId = document.getElementById('report_student_select').value;
         const area = document.getElementById('scorecard_area');
         const tbody = document.getElementById('scorecard-list');
@@ -558,15 +558,26 @@
         area.classList.remove('hidden');
         tbody.innerHTML = "<tr><td colspan='8'>निकाल शोधत आहे...</td></tr>";
 
-        const { data: results } = await supabaseClient.from('results').select('*').eq('student_id', studentId).order('created_at', { ascending: false });
+        // तारखेनुसार चढत्या क्रमाने डेटा आणा
+        const { data: results, error } = await supabaseClient.from('results').select('*').eq('student_id', studentId).order('created_at', { ascending: true });
         
         if(!results || results.length === 0) {
             tbody.innerHTML = "<tr><td colspan='8' style='color:red; text-align:center;'>या विद्यार्थ्याने अद्याप कोणतीही परीक्षा दिलेली नाही.</td></tr>";
             return;
         }
 
-        mySavedAdminResultsData = results; 
+        // Attempt Numbers मोजणे
+        let attemptTracker = {};
+        results.forEach(r => {
+            attemptTracker[r.exam_id] = (attemptTracker[r.exam_id] || 0) + 1;
+            r.attempt_number = attemptTracker[r.exam_id];
+        });
 
+        // नवीन निकाल वर दाखवण्यासाठी (Reverse)
+        results.reverse();
+        mySavedAdminResultsData = results; // Save for modal
+
+        // परीक्षेचे नाव (Exam Title) आणण्यासाठी
         const examIds = [...new Set(results.map(r => r.exam_id).filter(id => id != null))];
         let examMap = {};
         if (examIds.length > 0) {
@@ -587,10 +598,13 @@
             let badge = percentage < 50 ? `<span class='badge badge-danger'>Weak Section</span>` : `<span class='badge badge-success'>Good</span>`;
             
             const examTitle = examMap[r.exam_id] || `Exam ID: ${r.exam_id}`;
+            const attemptBadge = `<span style="background:#E5E7EB; color:#374151; padding:2px 6px; border-radius:4px; font-size:11px; margin-left:8px;">Attempt ${r.attempt_number}</span>`;
+            const dateStr = r.created_at ? `<div style="color:gray; font-size:11px; margin-top:4px;">📅 ${new Date(r.created_at).toLocaleString('en-IN')}</div>` : '';
+
             const btnHtml = r.response_data ? `<button class="btn-analysis" onclick="openAnalysis(${index})">👁️ पहा</button>` : `<span class="text-gray" style="font-size:12px;">उपलब्ध नाही</span>`;
 
             return `<tr>
-                <td><strong>${examTitle}</strong></td>
+                <td><strong>${examTitle}</strong> ${attemptBadge} ${dateStr}</td>
                 <td>${totalQs}</td>
                 <td class="text-green">${correct}</td>
                 <td class="text-red">${wrong}</td>
@@ -601,7 +615,6 @@
             </tr>`;
         }).join('');
     }
-
     window.currentAnalysisData = [];
 
     function openAnalysis(index) {
