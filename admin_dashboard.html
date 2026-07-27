@@ -852,7 +852,7 @@
         }
     }
 
-    async function createExam() {
+   async function createExam() {
         const btn = document.getElementById('exam-submit-btn');
         const title = document.getElementById('exam_title').value.trim(); 
         const type = document.getElementById('exam_type').value;
@@ -867,6 +867,7 @@
         btn.innerText = "प्रक्रिया सुरू आहे...";
 
         try {
+            // १. डुप्लिकेट परीक्षेचे नाव तपासणे
             const { data: existingExams, error: checkError } = await supabaseClient.from('exams').select('id').eq('exam_title', title);
             if (checkError) throw checkError;
             if (existingExams && existingExams.length > 0) {
@@ -874,11 +875,14 @@
                 btn.disabled = false; btn.innerText = "परीक्षा जनरेट करा"; return;
             }
 
+            // २. अचूक कॉलम नावे
             const colId = 'Question ID'; 
             const colSubj = 'Subject';
             const colChap = 'Chapter';
 
-            let query = supabaseClient.from(TABLE_NAME).select(`"${colId}"`);
+            // ३. निवडलेल्या प्रकारानुसार प्रश्न फिल्टर करणे 
+            // (टीप: आता आपण Question ID सोबत Subject सुद्धा फेच करत आहोत, जेणेकरून विषयानुसार विभागणी करता येईल)
+            let query = supabaseClient.from(TABLE_NAME).select(`"${colId}", "${colSubj}"`);
 
             if (type === 'Subject') {
                 const selectedSubj = Array.from(document.querySelectorAll('#exam_subjects input:checked')).map(cb => cb.value);
@@ -897,18 +901,56 @@
                 query = query.in(colChap, selectedChap);
             }
 
+            // ४. डेटाबेसमधून सर्व मॅच होणारे प्रश्न आणणे
             const { data: allQuestions, error: fetchError } = await query;
             if (fetchError) throw fetchError;
             
-            if (!allQuestions || allQuestions.length < qCount) { 
-                const foundCount = allQuestions ? allQuestions.length : 0;
-                showToast(`पुरेसे प्रश्न उपलब्ध नाहीत! (फिल्टरनुसार फक्त ${foundCount} प्रश्न सापडले)`, "error");
+            if (!allQuestions || allQuestions.length === 0) { 
+                showToast(`एकही प्रश्न सापडला नाही!`, "error");
                 btn.disabled = false; btn.innerText = "परीक्षा जनरेट करा"; return; 
             }
 
-            const shuffled = allQuestions.sort(() => 0.5 - Math.random());
-            const selectedIds = shuffled.slice(0, qCount).map(q => q[colId]);
+            // ५. --- नवीन लॉजिक: विषयानुसार प्रश्नांची समान विभागणी (Equal Distribution) ---
+            const questionsBySubject = {};
+            allQuestions.forEach(q => {
+                const subj = q[colSubj] || "General";
+                if (!questionsBySubject[subj]) questionsBySubject[subj] = [];
+                questionsBySubject[subj].push(q[colId]);
+            });
 
+            const uniqueSubjects = Object.keys(questionsBySubject);
+            const numSubjects = uniqueSubjects.length;
+
+            // प्रत्येक विषयासाठी किती प्रश्न हवेत याचे कॅल्क्युलेशन (उदा. 100 / 4 = 25)
+            const baseCount = Math.floor(qCount / numSubjects);
+            let remainder = qCount % numSubjects; // जर 100/3 असेल तर उरलेला 1 प्रश्न 
+
+            let finalSelectedIds = [];
+
+            for (const subj of uniqueSubjects) {
+                let neededForThisSubj = baseCount;
+                if (remainder > 0) {
+                    neededForThisSubj++; // उरलेले प्रश्न सुरुवातीच्या विषयांना वाटून देणे
+                    remainder--;
+                }
+
+                const availableQs = questionsBySubject[subj];
+
+                // जर एखाद्या विषयात पुरेसे प्रश्न नसतील तर ॲडमिनला एरर दाखवणे
+                if (availableQs.length < neededForThisSubj) {
+                    showToast(`'${subj}' मध्ये पुरेसे प्रश्न नाहीत! (फक्त ${availableQs.length} उपलब्ध, ${neededForThisSubj} हवे आहेत)`, "error");
+                    btn.disabled = false; btn.innerText = "परीक्षा जनरेट करा"; return;
+                }
+
+                // त्या विषयाचे प्रश्न शफल (Mix) करून हवे तेवढे निवडणे
+                const shuffledSubjQs = availableQs.sort(() => 0.5 - Math.random());
+                finalSelectedIds.push(...shuffledSubjQs.slice(0, neededForThisSubj));
+            }
+
+            // ६. फायनल शफलिंग: जेणेकरून परीक्षेत फिजिक्स, केमिस्ट्रीचे प्रश्न एकत्र मिक्स होऊन येतील (सलग एकाच विषयाचे येणार नाहीत)
+            const selectedIds = finalSelectedIds.sort(() => 0.5 - Math.random());
+
+            // ७. परीक्षा सेव्ह करणे
             const { error: insertError } = await supabaseClient.from('exams').insert([{ 
                 exam_title: title, 
                 exam_type: type, 
@@ -923,6 +965,7 @@
             document.getElementById('exam_title').value = "";
             document.getElementById('total_questions').value = "";
             
+            // सर्व चेकबॉक्स अनचेक करणे
             document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
             document.getElementById('subject_box').classList.add('hidden');
             document.getElementById('chapter_box').classList.add('hidden');
