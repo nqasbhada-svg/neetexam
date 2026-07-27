@@ -258,28 +258,17 @@
         }
     }
 
- async function fetchAvailableExams() {
-        const now = new Date();
-        
-        // १. आता सर्व परीक्षा डेटाबेसमधून आणूया (वेळ संपलेल्या सुद्धा)
-        const { data: allExams } = await supabaseClient
-            .from('exams')
-            .select('*')
-            .order('id', { ascending: false });
+async function fetchAvailableExams() {
+        const now = new Date().toISOString();
+        const { data: allExams } = await supabaseClient.from('exams').select('*').gte('valid_until', now).order('id', { ascending: false });
         
         const tbody = document.getElementById('available-exams-list');
-        if (!allExams || allExams.length === 0) { 
-            tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>सध्या नवीन परीक्षा उपलब्ध नाही.</td></tr>"; 
-            return; 
-        }
+        if (!allExams || allExams.length === 0) { tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>सध्या नवीन परीक्षा उपलब्ध नाही.</td></tr>"; return; }
 
-        // २. विद्यार्थ्याचे जुने निकाल तपासा
-        const { data: pastResults } = await supabaseClient
-            .from('results')
-            .select('exam_id')
-            .eq('student_id', currentStudentId);
+        // विद्यार्थ्याचे जुने निकाल तपासा
+        const { data: pastResults } = await supabaseClient.from('results').select('exam_id').eq('student_id', currentStudentId);
         
-        // ३. कोणत्या परीक्षेचे किती Attempts झाले ते मोजा
+        // कोणत्या परीक्षेचे किती Attempts झाले ते मोजा
         const attemptCounts = {};
         if (pastResults) {
             pastResults.forEach(r => {
@@ -287,64 +276,32 @@
             });
         }
         
-        // ४. नवीन नियमानुसार परीक्षा फिल्टर करा (Smart Filtering)
-        const examsToShow = allExams.filter(e => {
+        tbody.innerHTML = allExams.map(e => {
             const attempts = attemptCounts[e.id] || 0;
-            const isExpired = new Date(e.valid_until) < now;
-
-            // जर १ पण प्रयत्न केला नसेल आणि परीक्षेची वेळ संपली असेल, तर ती परीक्षा लपवा (Missed Exam)
-            if (attempts === 0 && isExpired) return false; 
-            
-            // बाकी सर्व केसेसमध्ये परीक्षा दाखवा (नवीन परीक्षा किंवा Re-exam साठी पात्र असलेल्या जुन्या परीक्षा)
-            return true;
-        });
-
-        if (examsToShow.length === 0) {
-            tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; color:var(--primary); font-weight:500;'>सध्या तुमच्यासाठी कोणतीही परीक्षा उपलब्ध नाही.</td></tr>";
-            return;
-        }
-
-        // ५. विद्यार्थ्याला परीक्षा दाखवणे
-        tbody.innerHTML = examsToShow.map(e => {
-            const attempts = attemptCounts[e.id] || 0;
-            const isExpired = new Date(e.valid_until) < now;
-            
-            let btnText = "परीक्षा सुरू करा (Attempt 1)";
+            let btnText = "परीक्षा सुरू करा";
             let btnColor = "var(--primary)";
             let btnAction = `onclick="startExam(${e.id})"`;
             let extraStyle = "";
-            let statusText = "<span style='color:var(--success); font-weight:bold;'>🟢 उपलब्ध</span>";
 
-            // जर १ किंवा २ प्रयत्न झाले असतील
+            // जर १ किंवा २ प्रयत्न झाले असतील (Attempt 2 आणि Attempt 3 साठी)
             if (attempts > 0 && attempts < 3) {
                 btnText = `पुन्हा परीक्षा द्या (Attempt ${attempts + 1})`;
                 btnColor = "#F59E0B"; // केशरी रंग
-                if (isExpired) {
-                    statusText = "<span style='color:#F59E0B; font-weight:bold;'>🟠 Re-exam</span>";
-                }
             } 
-            // जर ३ किंवा त्यापेक्षा जास्त प्रयत्न झाले असतील
+            // जर ३ किंवा त्यापेक्षा जास्त प्रयत्न झाले असतील (Limit Reached)
             else if (attempts >= 3) {
                 btnText = "कमाल ३ प्रयत्न पूर्ण झाले";
-                btnColor = "#9CA3AF"; // राखाडी रंग
-                btnAction = "disabled"; 
+                btnColor = "#9CA3AF"; // राखाडी रंग (Gray)
+                btnAction = "disabled"; // बटण क्लिक होणार नाही
                 extraStyle = "cursor: not-allowed; opacity: 0.7;";
-                statusText = "<span style='color:var(--danger); font-weight:bold;'>🔴 पूर्ण</span>";
-            }
-
-            // तारखेचे स्वरूप (जर वेळ संपली असेल आणि विद्यार्थी Re-exam देत असेल, तर त्याला समजण्यासाठी)
-            const originalDateStr = new Date(e.valid_until).toLocaleString('en-IN');
-            let displayDate = originalDateStr;
-            if (isExpired && attempts > 0) {
-                displayDate = `<span style="color:var(--danger); text-decoration:line-through; font-size:12px;">${originalDateStr}</span><br><span style="color:var(--success); font-size:12px; font-weight:bold;">(Re-exam Allowed)</span>`;
             }
 
             return `
                 <tr>
-                    <td><strong>${e.exam_title}</strong><br><span style="font-size:12px;">${statusText}</span></td>
+                    <td><strong>${e.exam_title}</strong></td>
                     <td>${e.exam_type}</td>
                     <td>${e.total_questions}</td>
-                    <td>${displayDate}</td>
+                    <td>${new Date(e.valid_until).toLocaleString('en-IN')}</td>
                     <td>
                         <button class='btn-start' style='background:${btnColor}; ${extraStyle}' ${btnAction}>
                             ${btnText}
@@ -354,7 +311,7 @@
             `;
         }).join('');
     }
-        // --- Live Exam Logic ---
+    // --- Live Exam Logic ---
     async function startExam(examId) {
         const { data: examInfo } = await supabaseClient.from('exams').select('*').eq('id', examId).single();
         if(!examInfo) return;
