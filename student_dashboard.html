@@ -10,8 +10,9 @@
     <!-- KaTeX CSS & JS (Math Formulas साठी) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}]});"></script>
-    <!-- SmilesDrawer JS (Chemistry Structures साठी) - ही लिंक इथे Head मध्ये असायला हवी -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}]});"></script>
+    
+    <!-- SmilesDrawer JS (Chemistry Structures साठी) -->
     <script src="https://unpkg.com/smiles-drawer@1.0.10/dist/smiles-drawer.min.js"></script>
 
     <style>
@@ -59,11 +60,15 @@
         .btn-start { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; }
         .btn-analysis { background: var(--warning); color: #000; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; }
         
-       /* Pro Exam Interface (Updated Layout) */
+        /* Pro Exam Interface Layout */
         .exam-layout { display: flex; height: calc(100vh - 60px); background: #f0f2f5; overflow: hidden; }
         .exam-main { flex: 3; display: flex; flex-direction: column; padding: 20px; overflow: hidden; }
         .question-panel { background: white; padding: 25px 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; flex-direction: column; height: 100%; overflow: hidden; }
         
+        /* नवीन विषय टॅब्स (Subject Sections) डिझाईन */
+        .subj-tab { padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 14px; border: 1px solid var(--border); background: white; color: var(--text-muted); transition: 0.2s; white-space: nowrap; margin-right: 8px;}
+        .subj-tab.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2); }
+
         .q-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 15px; font-weight: bold; font-size: 18px; flex-shrink: 0; }
         
         #single-question-container { flex-grow: 1; overflow-y: auto; padding-right: 15px; margin-bottom: 15px; padding-bottom: 10px; }
@@ -159,6 +164,10 @@
         <div class="exam-layout">
             <div class="exam-main">
                 <div class="question-panel">
+                    
+                    <!-- नवीन: विषय निवडण्याचे टॅब्स -->
+                    <div id="subject-tabs-container" style="display: flex; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border); overflow-x: auto;"></div>
+
                     <div class="q-header">
                         <span id="live-exam-title">Exam Title</span>
                         <span id="q-counter">प्रश्न 1 / 50</span>
@@ -182,7 +191,7 @@
                 
                 <div class="palette-section">
                     <h4 style="font-size: 15px; margin-bottom: 10px;">प्रश्न क्रमांक (Palette):</h4>
-                    <div class="palette-grid" id="palette-container"></div>
+                    <div id="palette-container"></div>
                     <button class="btn-submit" onclick="submitExam()">पेपर जमा करा (Submit)</button>
                 </div>
             </div>
@@ -258,17 +267,25 @@
         }
     }
 
-async function fetchAvailableExams() {
-        const now = new Date().toISOString();
-        const { data: allExams } = await supabaseClient.from('exams').select('*').gte('valid_until', now).order('id', { ascending: false });
+    async function fetchAvailableExams() {
+        const now = new Date();
+        
+        const { data: allExams } = await supabaseClient
+            .from('exams')
+            .select('*')
+            .order('id', { ascending: false });
         
         const tbody = document.getElementById('available-exams-list');
-        if (!allExams || allExams.length === 0) { tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>सध्या नवीन परीक्षा उपलब्ध नाही.</td></tr>"; return; }
+        if (!allExams || allExams.length === 0) { 
+            tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>सध्या नवीन परीक्षा उपलब्ध नाही.</td></tr>"; 
+            return; 
+        }
 
-        // विद्यार्थ्याचे जुने निकाल तपासा
-        const { data: pastResults } = await supabaseClient.from('results').select('exam_id').eq('student_id', currentStudentId);
+        const { data: pastResults } = await supabaseClient
+            .from('results')
+            .select('exam_id')
+            .eq('student_id', currentStudentId);
         
-        // कोणत्या परीक्षेचे किती Attempts झाले ते मोजा
         const attemptCounts = {};
         if (pastResults) {
             pastResults.forEach(r => {
@@ -276,32 +293,55 @@ async function fetchAvailableExams() {
             });
         }
         
-        tbody.innerHTML = allExams.map(e => {
+        const examsToShow = allExams.filter(e => {
             const attempts = attemptCounts[e.id] || 0;
-            let btnText = "परीक्षा सुरू करा";
+            const isExpired = new Date(e.valid_until) < now;
+            if (attempts === 0 && isExpired) return false; 
+            return true;
+        });
+
+        if (examsToShow.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; color:var(--primary); font-weight:500;'>सध्या तुमच्यासाठी कोणतीही परीक्षा उपलब्ध नाही.</td></tr>";
+            return;
+        }
+
+        tbody.innerHTML = examsToShow.map(e => {
+            const attempts = attemptCounts[e.id] || 0;
+            const isExpired = new Date(e.valid_until) < now;
+            
+            let btnText = "परीक्षा सुरू करा (Attempt 1)";
             let btnColor = "var(--primary)";
             let btnAction = `onclick="startExam(${e.id})"`;
             let extraStyle = "";
+            let statusText = "<span style='color:var(--success); font-weight:bold;'>🟢 उपलब्ध</span>";
 
-            // जर १ किंवा २ प्रयत्न झाले असतील (Attempt 2 आणि Attempt 3 साठी)
             if (attempts > 0 && attempts < 3) {
                 btnText = `पुन्हा परीक्षा द्या (Attempt ${attempts + 1})`;
-                btnColor = "#F59E0B"; // केशरी रंग
+                btnColor = "#F59E0B"; 
+                if (isExpired) {
+                    statusText = "<span style='color:#F59E0B; font-weight:bold;'>🟠 Re-exam</span>";
+                }
             } 
-            // जर ३ किंवा त्यापेक्षा जास्त प्रयत्न झाले असतील (Limit Reached)
             else if (attempts >= 3) {
                 btnText = "कमाल ३ प्रयत्न पूर्ण झाले";
-                btnColor = "#9CA3AF"; // राखाडी रंग (Gray)
-                btnAction = "disabled"; // बटण क्लिक होणार नाही
+                btnColor = "#9CA3AF"; 
+                btnAction = "disabled"; 
                 extraStyle = "cursor: not-allowed; opacity: 0.7;";
+                statusText = "<span style='color:var(--danger); font-weight:bold;'>🔴 पूर्ण</span>";
+            }
+
+            const originalDateStr = new Date(e.valid_until).toLocaleString('en-IN');
+            let displayDate = originalDateStr;
+            if (isExpired && attempts > 0) {
+                displayDate = `<span style="color:var(--danger); text-decoration:line-through; font-size:12px;">${originalDateStr}</span><br><span style="color:var(--success); font-size:12px; font-weight:bold;">(Re-exam Allowed)</span>`;
             }
 
             return `
                 <tr>
-                    <td><strong>${e.exam_title}</strong></td>
+                    <td><strong>${e.exam_title}</strong><br><span style="font-size:12px;">${statusText}</span></td>
                     <td>${e.exam_type}</td>
                     <td>${e.total_questions}</td>
-                    <td>${new Date(e.valid_until).toLocaleString('en-IN')}</td>
+                    <td>${displayDate}</td>
                     <td>
                         <button class='btn-start' style='background:${btnColor}; ${extraStyle}' ${btnAction}>
                             ${btnText}
@@ -311,12 +351,13 @@ async function fetchAvailableExams() {
             `;
         }).join('');
     }
-    // --- Live Exam Logic ---
+
     async function startExam(examId) {
         const { data: examInfo } = await supabaseClient.from('exams').select('*').eq('id', examId).single();
         if(!examInfo) return;
         currentExamData = examInfo;
 
+        document.getElementById('live-exam-title').innerText = examInfo.exam_title;
         document.getElementById('exam-interface').classList.remove('hidden');
         document.getElementById('main-container').classList.add('hidden');
         
@@ -325,7 +366,20 @@ async function fetchAvailableExams() {
             .select('*')
             .in('Question ID', examInfo.selected_question_ids);
 
-        examQuestions = questions.sort(() => 0.5 - Math.random());
+        // --- नवीन: प्रश्नांची विषयानुसार गटवारी करणे (Group by Subject) ---
+        const groupedQuestions = {};
+        questions.forEach(q => {
+            const subj = q['Subject'] || q['subject'] || "General";
+            if (!groupedQuestions[subj]) groupedQuestions[subj] = [];
+            groupedQuestions[subj].push(q);
+        });
+
+        examQuestions = [];
+        const sortedSubjects = Object.keys(groupedQuestions).sort();
+        sortedSubjects.forEach(subj => {
+            groupedQuestions[subj].sort(() => 0.5 - Math.random());
+            examQuestions.push(...groupedQuestions[subj]);
+        });
         
         currentQuestionIndex = 0;
         studentResponses = {};
@@ -340,8 +394,41 @@ async function fetchAvailableExams() {
         document.getElementById('q-counter').innerText = `प्रश्न ${currentQuestionIndex + 1} / ${examQuestions.length}`;
         const q = examQuestions[currentQuestionIndex];
         const isCap = q.hasOwnProperty('Option A');
+        const currentSubj = q['Subject'] || q['subject'] || "General";
         
-        // --- 1. SMILES Structure Logic ---
+        // --- 1. विषय टॅब्स (Subject Tabs) तयार करणे ---
+        let tabsHtml = "";
+        const uniqueSubjects = [];
+        examQuestions.forEach((qObj, idx) => {
+            const subj = qObj['Subject'] || qObj['subject'] || "General";
+            if (!uniqueSubjects.includes(subj)) {
+                uniqueSubjects.push(subj);
+                const isActive = (subj === currentSubj) ? "active" : "";
+                tabsHtml += `<button class="subj-tab ${isActive}" onclick="jumpToQuestion(${idx})">${subj}</button>`;
+            }
+        });
+        document.getElementById('subject-tabs-container').innerHTML = tabsHtml;
+
+        // --- 2. Palette मध्ये विषयानुसार गट करणे ---
+        const pal = document.getElementById('palette-container');
+        pal.className = ""; 
+        let paletteHtml = "";
+        let currentPaletteSubj = "";
+        
+        examQuestions.forEach((qObj, i) => {
+            const subj = qObj['Subject'] || qObj['subject'] || "General";
+            if (subj !== currentPaletteSubj) {
+                if (paletteHtml !== "") paletteHtml += `</div>`; 
+                paletteHtml += `<div style="font-size: 13px; font-weight: bold; color: var(--text-muted); margin: 15px 0 8px 0; border-bottom:1px solid var(--border); padding-bottom:4px;">${subj}</div>`;
+                paletteHtml += `<div class="palette-grid" style="margin-top:0;">`;
+                currentPaletteSubj = subj;
+            }
+            paletteHtml += `<button class="palette-btn status-${questionStatuses[i]} ${i === currentQuestionIndex ? 'status-active' : ''}" onclick="jumpToQuestion(${i})">${i + 1}</button>`;
+        });
+        if(paletteHtml !== "") paletteHtml += `</div>`;
+        pal.innerHTML = paletteHtml;
+
+        // --- 3. SMILES Structure Logic ---
         const smilesCode = q['Smiles'] || q['question_smiles'] || q['SMILES'] || null;
         let structureHtml = "";
         if (smilesCode) {
@@ -356,7 +443,6 @@ async function fetchAvailableExams() {
         let rawQText = isCap ? q['Question'] : q['question'];
         const qText = formatQuestionText(rawQText);
         
-        // 2. Match the Column Rendering Logic
         let questionHtml = `<div class="q-text">${currentQuestionIndex + 1}. ${qText}</div>`;
         
         const col1 = q['Column_I'] || q['Column I'] || null;
@@ -399,13 +485,6 @@ async function fetchAvailableExams() {
             </div>
         `;
 
-        const pal = document.getElementById('palette-container');
-        pal.innerHTML = "";
-        for (let i = 0; i < examQuestions.length; i++) {
-            pal.innerHTML += `<button class="palette-btn status-${questionStatuses[i]} ${i === currentQuestionIndex ? 'status-active' : ''}" onclick="jumpToQuestion(${i})">${i + 1}</button>`;
-        }
-
-        // --- 3. Draw SMILES Structure on Canvas ---
         if (smilesCode) {
             try {
                 let options = { width: 300, height: 200, bondThickness: 1.5, fontSizeLarge: 14 };
@@ -418,16 +497,15 @@ async function fetchAvailableExams() {
             }
         }
 
-        // 4. Render Math Formulas Using KaTeX
-       if (typeof renderMathInElement === 'function') {
+        if (typeof renderMathInElement === 'function') {
             renderMathInElement(document.getElementById('single-question-container'), {
                 delimiters: [
                     {left: "$$", right: "$$", display: true},
-                    {left: "$", right: "$", display: false}, // <-- ही नवीन लाईन ॲड केली आहे
+                    {left: "$", right: "$", display: false},
                     {left: "\\(", right: "\\)", display: false},
                     {left: "\\[", right: "\\]", display: true}
                 ],
-                throwOnError: false // जर टायपिंगमध्ये चूक झाली तरी पेज क्रॅश होणार नाही
+                throwOnError: false 
             });
         }
     }
@@ -467,7 +545,16 @@ async function fetchAvailableExams() {
 
         examQuestions.forEach((q, index) => {
             const ansRaw = isCap ? q['Correct Option'] : q['correct option'] || q['correct_option'];
-            const correctAns = ansRaw ? ansRaw.toString().trim().charAt(0).toUpperCase() : "";
+            
+            // --- O येण्याचा प्रॉब्लेम सोडवण्यासाठी फिक्स ---
+            let correctAns = "";
+            if (ansRaw) {
+                let tempAns = ansRaw.toString().toUpperCase().trim();
+                tempAns = tempAns.replace(/OPTION/g, "").replace(/OPT/g, "").replace(/ANSWER/g, "").trim();
+                tempAns = tempAns.replace(/[:\-]/g, "").trim(); 
+                correctAns = tempAns.charAt(0); 
+            }
+
             const studentAns = studentResponses[index] || null;
             const explanation = isCap ? q['Detailed Explanation'] : q['detailed explanation'] || q['detailed_explanation'] || "स्पष्टीकरण उपलब्ध नाही.";
             const subject = q['Subject'] || q['subject'] || "General";
@@ -481,7 +568,7 @@ async function fetchAvailableExams() {
 
             detailedAnalysisArray.push({
                 question: isCap ? q['Question'] : q['question'],
-                Smiles: smilesCode, // SMILES कोड निकालासाठी सेव्ह केला
+                Smiles: smilesCode,
                 Column_I: col1,
                 Column_II: col2,
                 optA: isCap ? q['Option A'] : q['option a'] || q['option_a'],
@@ -525,7 +612,6 @@ async function fetchAvailableExams() {
         }
         
         try {
-            // तारखेनुसार चढत्या क्रमाने (Ascending) डेटा आणा जेणेकरून Attempt मोजता येतील
             const { data: resultsData, error } = await supabaseClient.from('results').select('*').eq('student_id', currentStudentId).order('created_at', { ascending: true });
             if (error) throw error; 
             
@@ -534,14 +620,12 @@ async function fetchAvailableExams() {
                 return; 
             }
 
-            // Attempt Numbers मोजणे
             let attemptTracker = {};
             resultsData.forEach(r => {
                 attemptTracker[r.exam_id] = (attemptTracker[r.exam_id] || 0) + 1;
-                r.attempt_number = attemptTracker[r.exam_id]; // प्रत्येक निकालाला Attempt Number दिला
+                r.attempt_number = attemptTracker[r.exam_id]; 
             });
 
-            // नवीन निकाल वर दाखवण्यासाठी डेटा उलटा (Reverse) करा
             resultsData.reverse();
             mySavedResultsData = resultsData; 
             
@@ -577,6 +661,7 @@ async function fetchAvailableExams() {
             }).join('');
         } catch (err) { tbody.innerHTML = `<tr><td colspan='7' style='text-align:center; color:red;'>तांत्रिक अडचण: ${err.message}</td></tr>`; }
     }
+
     window.currentAnalysisData = [];
 
     function openAnalysis(index) {
@@ -667,7 +752,6 @@ async function fetchAvailableExams() {
             statusBadge = `<span class="badge" style="background:#E5E7EB; color:#374151; font-size:14px;">सोडवला नाही (0)</span>`; borderColor = "#9CA3AF";
         }
 
-        // --- 1. SMILES Structure Logic For Analysis View ---
         const smilesCode = q.Smiles || q.question_smiles || null;
         let structureHtml = "";
         if (smilesCode) {
@@ -678,11 +762,9 @@ async function fetchAvailableExams() {
             `;
         }
 
-        // --- प्रश्नाला फॉरमॅट लावणे (Analysis View) ---
         let rawQTextAnalysis = q.question || q.Question;
         let formattedQTextAnalysis = formatQuestionText(rawQTextAnalysis);
         
-        // Match the column table for Analysis view
         let questionTextHtml = `<p style="font-size:17px; margin-bottom:20px; font-weight: 600; color:#111827; line-height:1.6;">${formattedQTextAnalysis}</p>`;
         
         if (q.Column_I && Array.isArray(q.Column_I)) {
@@ -749,7 +831,6 @@ async function fetchAvailableExams() {
 
         document.getElementById('question-detail-view').innerHTML = detailHtml;
 
-        // --- 2. Draw SMILES Structure on Canvas for Analysis ---
         if (smilesCode) {
             try {
                 let options = { width: 300, height: 200, bondThickness: 1.5, fontSizeLarge: 14 };
@@ -762,13 +843,15 @@ async function fetchAvailableExams() {
             }
         }
 
-        // Render Math Formulas in Analysis Model Using KaTeX
         if (typeof renderMathInElement === 'function') {
             renderMathInElement(document.getElementById('question-detail-view'), {
                 delimiters: [
                     {left: "$$", right: "$$", display: true},
-                    {left: "\\(", right: "\\)", display: false}
-                ]
+                    {left: "$", right: "$", display: false},
+                    {left: "\\(", right: "\\)", display: false},
+                    {left: "\\[", right: "\\]", display: true}
+                ],
+                throwOnError: false
             });
         }
     }
