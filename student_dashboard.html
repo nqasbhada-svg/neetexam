@@ -258,33 +258,46 @@
         }
     }
 
-    async function fetchAvailableExams() {
+   async function fetchAvailableExams() {
         const now = new Date().toISOString();
         const { data: allExams } = await supabaseClient.from('exams').select('*').gte('valid_until', now).order('id', { ascending: false });
         
         const tbody = document.getElementById('available-exams-list');
-        if (!allExams || allExams.length === 0) { tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>नवीन परीक्षा उपलब्ध नाही.</td></tr>"; return; }
+        if (!allExams || allExams.length === 0) { tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>सध्या नवीन परीक्षा उपलब्ध नाही.</td></tr>"; return; }
 
+        // विद्यार्थ्याचे जुने निकाल तपासा
         const { data: pastResults } = await supabaseClient.from('results').select('exam_id').eq('student_id', currentStudentId);
-        const completedExamIds = pastResults ? pastResults.map(r => r.exam_id) : [];
-        const pendingExams = allExams.filter(exam => !completedExamIds.includes(exam.id));
-
-        if (pendingExams.length === 0) {
-            tbody.innerHTML = "<tr><td colspan='5' style='text-align:center; color:green; font-weight:bold;'>तुम्ही सर्व उपलब्ध परीक्षा पूर्ण केल्या आहेत!</td></tr>";
-            return;
+        
+        // कोणत्या परीक्षेचे किती Attempts झाले ते मोजा
+        const attemptCounts = {};
+        if (pastResults) {
+            pastResults.forEach(r => {
+                attemptCounts[r.exam_id] = (attemptCounts[r.exam_id] || 0) + 1;
+            });
         }
         
-        tbody.innerHTML = pendingExams.map(e => `
-            <tr>
-                <td><strong>${e.exam_title}</strong></td>
-                <td>${e.exam_type}</td>
-                <td>${e.total_questions}</td>
-                <td>${new Date(e.valid_until).toLocaleString('en-IN')}</td>
-                <td><button class='btn-start' onclick="startExam(${e.id})">परीक्षा सुरू करा</button></td>
-            </tr>
-        `).join('');
-    }
+        tbody.innerHTML = allExams.map(e => {
+            const attempts = attemptCounts[e.id] || 0;
+            let btnText = "परीक्षा सुरू करा";
+            let btnColor = "var(--primary)";
+            
+            // जर आधी परीक्षा दिली असेल, तर Re-exam चे बटण दाखवा
+            if (attempts > 0) {
+                btnText = `पुन्हा परीक्षा द्या (Attempt ${attempts + 1})`;
+                btnColor = "#F59E0B"; // केशरी रंग (Warning color)
+            }
 
+            return `
+                <tr>
+                    <td><strong>${e.exam_title}</strong></td>
+                    <td>${e.exam_type}</td>
+                    <td>${e.total_questions}</td>
+                    <td>${new Date(e.valid_until).toLocaleString('en-IN')}</td>
+                    <td><button class='btn-start' style='background:${btnColor};' onclick="startExam(${e.id})">${btnText}</button></td>
+                </tr>
+            `;
+        }).join('');
+    }
     // --- Live Exam Logic ---
     async function startExam(examId) {
         const { data: examInfo } = await supabaseClient.from('exams').select('*').eq('id', examId).single();
