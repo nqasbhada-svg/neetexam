@@ -258,7 +258,7 @@
         }
     }
 
-  async function fetchAvailableExams() {
+ async function fetchAvailableExams() {
         const now = new Date().toISOString();
         const { data: allExams } = await supabaseClient.from('exams').select('*').gte('valid_until', now).order('id', { ascending: false });
         
@@ -280,11 +280,20 @@
             const attempts = attemptCounts[e.id] || 0;
             let btnText = "परीक्षा सुरू करा";
             let btnColor = "var(--primary)";
-            
-            // जर आधी परीक्षा दिली असेल, तर Re-exam चे बटण दाखवा
-            if (attempts > 0) {
+            let btnAction = `onclick="startExam(${e.id})"`;
+            let extraStyle = "";
+
+            // जर १ किंवा २ प्रयत्न झाले असतील (Attempt 2 आणि Attempt 3 साठी)
+            if (attempts > 0 && attempts < 3) {
                 btnText = `पुन्हा परीक्षा द्या (Attempt ${attempts + 1})`;
-                btnColor = "#F59E0B"; // केशरी रंग (Warning color)
+                btnColor = "#F59E0B"; // केशरी रंग
+            } 
+            // जर ३ किंवा त्यापेक्षा जास्त प्रयत्न झाले असतील (Limit Reached)
+            else if (attempts >= 3) {
+                btnText = "कमाल ३ प्रयत्न पूर्ण झाले";
+                btnColor = "#9CA3AF"; // राखाडी रंग (Gray)
+                btnAction = "disabled"; // बटण क्लिक होणार नाही
+                extraStyle = "cursor: not-allowed; opacity: 0.7;";
             }
 
             return `
@@ -293,12 +302,16 @@
                     <td>${e.exam_type}</td>
                     <td>${e.total_questions}</td>
                     <td>${new Date(e.valid_until).toLocaleString('en-IN')}</td>
-                    <td><button class='btn-start' style='background:${btnColor};' onclick="startExam(${e.id})">${btnText}</button></td>
+                    <td>
+                        <button class='btn-start' style='background:${btnColor}; ${extraStyle}' ${btnAction}>
+                            ${btnText}
+                        </button>
+                    </td>
                 </tr>
             `;
         }).join('');
     }
-    // --- Live Exam Logic ---
+        // --- Live Exam Logic ---
     async function startExam(examId) {
         const { data: examInfo } = await supabaseClient.from('exams').select('*').eq('id', examId).single();
         if(!examInfo) return;
