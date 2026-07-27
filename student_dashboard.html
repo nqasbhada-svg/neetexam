@@ -258,7 +258,7 @@
         }
     }
 
-   async function fetchAvailableExams() {
+  async function fetchAvailableExams() {
         const now = new Date().toISOString();
         const { data: allExams } = await supabaseClient.from('exams').select('*').gte('valid_until', now).order('id', { ascending: false });
         
