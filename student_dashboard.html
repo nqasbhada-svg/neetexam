@@ -512,7 +512,8 @@
         }
         
         try {
-            const { data: resultsData, error } = await supabaseClient.from('results').select('*').eq('student_id', currentStudentId).order('created_at', { ascending: false });
+            // तारखेनुसार चढत्या क्रमाने (Ascending) डेटा आणा जेणेकरून Attempt मोजता येतील
+            const { data: resultsData, error } = await supabaseClient.from('results').select('*').eq('student_id', currentStudentId).order('created_at', { ascending: true });
             if (error) throw error; 
             
             if (!resultsData || resultsData.length === 0) { 
@@ -520,6 +521,15 @@
                 return; 
             }
 
+            // Attempt Numbers मोजणे
+            let attemptTracker = {};
+            resultsData.forEach(r => {
+                attemptTracker[r.exam_id] = (attemptTracker[r.exam_id] || 0) + 1;
+                r.attempt_number = attemptTracker[r.exam_id]; // प्रत्येक निकालाला Attempt Number दिला
+            });
+
+            // नवीन निकाल वर दाखवण्यासाठी डेटा उलटा (Reverse) करा
+            resultsData.reverse();
             mySavedResultsData = resultsData; 
             
             const examIds = [...new Set(resultsData.map(r => r.exam_id).filter(id => id != null))];
@@ -535,11 +545,15 @@
                 const maxScore = r.total_questions * 4;
                 const percentage = maxScore > 0 ? ((r.obtained_score / maxScore) * 100).toFixed(1) : 0;
                 const badge = percentage < 50 ? `<span class='badge badge-danger'>Practice Needed</span>` : `<span class='badge badge-success'>Good</span>`;
+                
                 const examTitle = examMap[r.exam_id] || `Exam ID: ${r.exam_id}`;
+                const attemptBadge = `<span style="background:#E5E7EB; color:#374151; padding:2px 6px; border-radius:4px; font-size:11px; margin-left:8px;">Attempt ${r.attempt_number}</span>`;
+                const dateStr = r.created_at ? `<div style="color:gray; font-size:11px; margin-top:4px;">📅 ${new Date(r.created_at).toLocaleString('en-IN')}</div>` : '';
+                
                 const btnHtml = r.response_data ? `<button class="btn-analysis" onclick="openAnalysis(${index})">👁️ विश्लेषण पहा</button>` : `<span style="color:gray; font-size:12px;">उपलब्ध नाही</span>`;
 
                 return `<tr>
-                    <td><strong>${examTitle}</strong></td>
+                    <td><strong>${examTitle}</strong> ${attemptBadge} ${dateStr}</td>
                     <td class="text-green">${correct}</td>
                     <td class="text-red">${wrong}</td>
                     <td>${r.unattempted || 0}</td>
@@ -550,7 +564,6 @@
             }).join('');
         } catch (err) { tbody.innerHTML = `<tr><td colspan='7' style='text-align:center; color:red;'>तांत्रिक अडचण: ${err.message}</td></tr>`; }
     }
-
     window.currentAnalysisData = [];
 
     function openAnalysis(index) {
