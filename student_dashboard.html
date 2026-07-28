@@ -267,9 +267,10 @@
         }
     }
 
-    async function fetchAvailableExams() {
+   async function fetchAvailableExams() {
         const now = new Date();
         
+        // १. सर्व परीक्षा डेटाबेसमधून आणा (नवीन परीक्षा सर्वात वर)
         const { data: allExams } = await supabaseClient
             .from('exams')
             .select('*')
@@ -281,11 +282,13 @@
             return; 
         }
 
+        // २. विद्यार्थ्याचे जुने निकाल तपासा
         const { data: pastResults } = await supabaseClient
             .from('results')
             .select('exam_id')
             .eq('student_id', currentStudentId);
         
+        // ३. कोणत्या परीक्षेचे किती Attempts झाले ते मोजा
         const attemptCounts = {};
         if (pastResults) {
             pastResults.forEach(r => {
@@ -293,10 +296,22 @@
             });
         }
         
+        // --- नवीन लॉजिक: फक्त शेवटची (Latest) परीक्षा Re-exam साठी दाखवणे ---
+        const latestExamId = allExams[0].id; // यादीतील पहिली परीक्षा (सर्वात नवीन)
+
         const examsToShow = allExams.filter(e => {
             const attempts = attemptCounts[e.id] || 0;
             const isExpired = new Date(e.valid_until) < now;
-            if (attempts === 0 && isExpired) return false; 
+
+            if (isExpired) {
+                // जर परीक्षा Expire झाली असेल आणि ती सर्वात नवीन (Last) परीक्षा नसेल, तर ती पूर्णपणे लपवा
+                if (e.id !== latestExamId) return false;
+                
+                // जर ती सर्वात नवीन (Last) परीक्षा असेल, पण विद्यार्थ्याने ती एकदाही दिली नसेल (Attempt 0), तर लपवा
+                if (attempts === 0) return false;
+            }
+            
+            // बाकी सर्व केसेसमध्ये (Active परीक्षा किंवा Latest परीक्षेचा Re-exam) परीक्षा दाखवा
             return true;
         });
 
@@ -305,6 +320,7 @@
             return;
         }
 
+        // ४. विद्यार्थ्याला परीक्षा दाखवणे
         tbody.innerHTML = examsToShow.map(e => {
             const attempts = attemptCounts[e.id] || 0;
             const isExpired = new Date(e.valid_until) < now;
@@ -351,7 +367,6 @@
             `;
         }).join('');
     }
-
     async function startExam(examId) {
         const { data: examInfo } = await supabaseClient.from('exams').select('*').eq('id', examId).single();
         if(!examInfo) return;
