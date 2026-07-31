@@ -6,12 +6,12 @@
     <title>Student Dashboard - NEET Exam Platform</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
+
     <!-- KaTeX CSS & JS (Math Formulas साठी) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}]});"></script>
-    
+
     <!-- SmilesDrawer JS (Chemistry Structures साठी) -->
     <script src="https://unpkg.com/smiles-drawer@1.0.10/dist/smiles-drawer.min.js"></script>
 
@@ -59,28 +59,28 @@
 
         .btn-start { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; }
         .btn-analysis { background: var(--warning); color: #000; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; }
-        
+
         /* Pro Exam Interface Layout */
         .exam-layout { display: flex; height: calc(100vh - 60px); background: #f0f2f5; overflow: hidden; }
         .exam-main { flex: 3; display: flex; flex-direction: column; padding: 20px; overflow: hidden; }
         .question-panel { background: white; padding: 25px 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-        
+
         /* नवीन विषय टॅब्स (Subject Sections) डिझाईन */
         .subj-tab { padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 14px; border: 1px solid var(--border); background: white; color: var(--text-muted); transition: 0.2s; white-space: nowrap; margin-right: 8px;}
         .subj-tab.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2); }
 
         .q-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 15px; font-weight: bold; font-size: 18px; flex-shrink: 0; }
-        
+
         #single-question-container { flex-grow: 1; overflow-y: auto; padding-right: 15px; margin-bottom: 15px; padding-bottom: 10px; }
         #single-question-container::-webkit-scrollbar { width: 6px; }
         #single-question-container::-webkit-scrollbar-thumb { background-color: #CBD5E1; border-radius: 4px; }
-        
+
         .q-text { font-size: 18px; font-weight: 600; margin-bottom: 25px; color: #111827; line-height: 1.5; }
         .options-grid { display: flex; flex-direction: column; gap: 15px; }
         .option-label { display: flex; align-items: center; padding: 15px; border: 1px solid var(--border); border-radius: 8px; background: white; cursor: pointer; transition: 0.2s; font-size: 16px; font-weight: 500;}
         .option-label:hover { border-color: var(--primary); background: #EEF2FF; }
         .option-label input { margin-right: 15px; transform: scale(1.3); cursor: pointer;}
-        
+
         .nav-buttons { display: flex; justify-content: space-between; flex-shrink: 0; padding-top: 15px; border-top: 1px solid var(--border); }
         .btn-nav { padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; border: none; font-size: 15px;}
         .btn-prev { background: white; border: 1px solid var(--border); color: var(--text-main); }
@@ -97,7 +97,7 @@
         .status-not-answered { background: var(--danger); color: white; border-color: var(--danger); }
         .status-not-visited { background: #F3F4F6; color: var(--text-muted); }
         .status-active { box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.4); border-color: var(--primary); }
-                
+
         /* Analysis Modal */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; display: none; justify-content: center; align-items: center; padding: 20px;}
         .modal-content { background: white; width: 100%; max-width: 900px; max-height: 90vh; overflow-y: auto; border-radius: 12px; padding: 25px; position: relative; }
@@ -106,6 +106,77 @@
         .ans-explanation { background: #F3F4F6; padding: 12px; border-radius: 6px; margin-top: 10px; font-size: 14px; border-left: 4px solid var(--warning); }
 
         .hidden { display: none !important; }
+
+        /* 📱 मोबाईल व्ह्यू (Mobile Responsiveness) साठी खास डिझाईन */
+        @media (max-width: 768px) {
+            body { 
+                overflow-y: auto; /* मोबाईलवर पेज स्क्रोल होऊ देणे */
+                height: auto;
+            }
+            .exam-layout { 
+                flex-direction: column; /* लेआउट एकाखाली एक करणे */
+                height: auto; 
+                overflow: visible;
+            }
+            .exam-main { 
+                flex: none; 
+                width: 100%; 
+                padding: 10px; 
+            }
+            .question-panel { 
+                padding: 15px; 
+                height: auto;
+            }
+            #single-question-container { 
+                overflow-y: visible; /* प्रश्नाला स्क्रोल न लावता पूर्ण दाखवणे */
+            }
+            .exam-sidebar { 
+                flex: none; 
+                width: 100%; 
+                min-width: 100%; 
+                max-width: 100%; 
+                border-left: none; 
+                border-top: 2px solid var(--border); /* पॅलेटच्या वर बॉर्डर */
+            }
+            .navbar { 
+                flex-direction: column; 
+                padding: 15px; 
+                text-align: center; 
+                gap: 10px; 
+            }
+            .navbar div { 
+                flex-direction: column; 
+                width: 100%; 
+                gap: 10px; 
+            }
+            .user-info { 
+                margin: 0; 
+                width: 100%; 
+                font-size: 13px;
+            }
+            .logout-btn { 
+                width: 100%; 
+            }
+            .nav-buttons { 
+                flex-wrap: wrap; 
+                gap: 10px; 
+            }
+            .btn-nav { 
+                flex: 1; 
+                min-width: 45%; 
+                padding: 10px; 
+                font-size: 14px; 
+            }
+            .palette-grid { 
+                grid-template-columns: repeat(6, 1fr); /* मोबाईलवर ६ नंबर्स एका ओळीत */
+            }
+            table { 
+                font-size: 12px; 
+            }
+            th, td { 
+                padding: 8px; 
+            }
+        }
     </style>
 </head>
 <body>
@@ -164,7 +235,7 @@
         <div class="exam-layout">
             <div class="exam-main">
                 <div class="question-panel">
-                    
+
                     <!-- नवीन: विषय निवडण्याचे टॅब्स -->
                     <div id="subject-tabs-container" style="display: flex; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border); overflow-x: auto;"></div>
 
@@ -172,7 +243,7 @@
                         <span id="live-exam-title">Exam Title</span>
                         <span id="q-counter">प्रश्न 1 / 50</span>
                     </div>
-                    
+
                     <div id="single-question-container"></div>
 
                     <div class="nav-buttons">
@@ -188,7 +259,7 @@
                     <div style="color: var(--text-muted); font-size: 14px; margin-bottom: 5px;">उर्वरित वेळ</div>
                     <div id="exam-timer" style="font-size: 28px; font-weight: bold; color: var(--danger);">00:00</div>
                 </div>
-                
+
                 <div class="palette-section">
                     <h4 style="font-size: 15px; margin-bottom: 10px;">प्रश्न क्रमांक (Palette):</h4>
                     <div id="palette-container"></div>
@@ -216,12 +287,12 @@
     const SUPABASE_KEY = 'sb_publishable_6xnlWswPyQ_BbzKySdHGAw_waSsMuf0';
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const TABLE_NAME = 'NEET QUESTION BANK';
-    
+
     let currentStudentId = null;
     let currentExamData = null;
     let examQuestions = [];
     let timerInterval = null;
-    
+
     // Global variable for Analysis
     let mySavedResultsData = []; 
 
@@ -248,7 +319,7 @@
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.getElementById(tabId).classList.add('active');
         event.currentTarget.classList.add('active');
-        
+
         if(tabId === 'tab-exams') fetchAvailableExams();
         if(tabId === 'tab-results') fetchMyResults();
     }
@@ -256,7 +327,7 @@
     async function checkStudent() {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session) { window.location.href = "index.html"; return; }
-        
+
         const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', session.user.id).single();
         if (!profile || profile.role !== 'student' || !profile.is_active) { 
             alert("अकाउंट ॲक्टिव्हेट झालेले नाही."); window.location.href = "index.html"; 
@@ -269,13 +340,13 @@
 
    async function fetchAvailableExams() {
         const now = new Date();
-        
+
         // १. सर्व परीक्षा डेटाबेसमधून आणा (नवीन परीक्षा सर्वात वर)
         const { data: allExams } = await supabaseClient
             .from('exams')
             .select('*')
             .order('id', { ascending: false });
-        
+
         const tbody = document.getElementById('available-exams-list');
         if (!allExams || allExams.length === 0) { 
             tbody.innerHTML = "<tr><td colspan='5' style='text-align:center;'>सध्या नवीन परीक्षा उपलब्ध नाही.</td></tr>"; 
@@ -287,7 +358,7 @@
             .from('results')
             .select('exam_id')
             .eq('student_id', currentStudentId);
-        
+
         // ३. कोणत्या परीक्षेचे किती Attempts झाले ते मोजा
         const attemptCounts = {};
         if (pastResults) {
@@ -295,7 +366,7 @@
                 attemptCounts[r.exam_id] = (attemptCounts[r.exam_id] || 0) + 1;
             });
         }
-        
+
         // --- नवीन लॉजिक: फक्त शेवटची (Latest) परीक्षा Re-exam साठी दाखवणे ---
         const latestExamId = allExams[0].id; // यादीतील पहिली परीक्षा (सर्वात नवीन)
 
@@ -306,11 +377,11 @@
             if (isExpired) {
                 // जर परीक्षा Expire झाली असेल आणि ती सर्वात नवीन (Last) परीक्षा नसेल, तर ती पूर्णपणे लपवा
                 if (e.id !== latestExamId) return false;
-                
+
                 // जर ती सर्वात नवीन (Last) परीक्षा असेल, पण विद्यार्थ्याने ती एकदाही दिली नसेल (Attempt 0), तर लपवा
                 if (attempts === 0) return false;
             }
-            
+
             // बाकी सर्व केसेसमध्ये (Active परीक्षा किंवा Latest परीक्षेचा Re-exam) परीक्षा दाखवा
             return true;
         });
@@ -324,7 +395,7 @@
         tbody.innerHTML = examsToShow.map(e => {
             const attempts = attemptCounts[e.id] || 0;
             const isExpired = new Date(e.valid_until) < now;
-            
+
             let btnText = "परीक्षा सुरू करा (Attempt 1)";
             let btnColor = "var(--primary)";
             let btnAction = `onclick="startExam(${e.id})"`;
@@ -375,7 +446,7 @@
         document.getElementById('live-exam-title').innerText = examInfo.exam_title;
         document.getElementById('exam-interface').classList.remove('hidden');
         document.getElementById('main-container').classList.add('hidden');
-        
+
         const { data: questions } = await supabaseClient
             .from(TABLE_NAME)
             .select('*')
@@ -395,7 +466,7 @@
             groupedQuestions[subj].sort(() => 0.5 - Math.random());
             examQuestions.push(...groupedQuestions[subj]);
         });
-        
+
         currentQuestionIndex = 0;
         studentResponses = {};
         questionStatuses = Array(examQuestions.length).fill('not-visited');
@@ -410,7 +481,7 @@
         const q = examQuestions[currentQuestionIndex];
         const isCap = q.hasOwnProperty('Option A');
         const currentSubj = q['Subject'] || q['subject'] || "General";
-        
+
         // --- 1. विषय टॅब्स (Subject Tabs) तयार करणे ---
         let tabsHtml = "";
         const uniqueSubjects = [];
@@ -429,7 +500,7 @@
         pal.className = ""; 
         let paletteHtml = "";
         let currentPaletteSubj = "";
-        
+
         examQuestions.forEach((qObj, i) => {
             const subj = qObj['Subject'] || qObj['subject'] || "General";
             if (subj !== currentPaletteSubj) {
@@ -457,12 +528,12 @@
         // --- प्रश्नाला फॉरमॅट लावणे ---
         let rawQText = isCap ? q['Question'] : q['question'];
         const qText = formatQuestionText(rawQText);
-        
+
         let questionHtml = `<div class="q-text">${currentQuestionIndex + 1}. ${qText}</div>`;
-        
+
         const col1 = q['Column_I'] || q['Column I'] || null;
         const col2 = q['Column_II'] || q['Column II'] || null;
-        
+
         if (col1 && Array.isArray(col1)) {
             let tableRows = "";
             const maxLength = Math.max(col1.length, col2.length);
@@ -560,7 +631,7 @@
 
         examQuestions.forEach((q, index) => {
             const ansRaw = isCap ? q['Correct Option'] : q['correct option'] || q['correct_option'];
-            
+
             // --- O येण्याचा प्रॉब्लेम सोडवण्यासाठी फिक्स ---
             let correctAns = "";
             if (ansRaw) {
@@ -596,7 +667,7 @@
                 explanation: explanation
             });
         });
-        
+
         const obtainedScore = (correct * 4) - (wrong * 1);
         document.getElementById('single-question-container').innerHTML = "<div style='text-align:center; font-size:18px;'>निकाल सेव्ह होत आहे...</div>";
 
@@ -611,7 +682,7 @@
                 obtained_score: obtainedScore,
                 response_data: detailedAnalysisArray 
             }]);
-            
+
             alert(`परीक्षा पूर्ण झाली!\nगुण: ${obtainedScore} / ${currentExamData.total_questions * 4}`);
             window.location.reload();
         } catch(err) { alert("अडचण: " + err.message); window.location.reload(); }
@@ -620,16 +691,16 @@
     // --- Scorecard Logic ---
     async function fetchMyResults() {
         const tbody = document.getElementById('my-results-list');
-        
+
         if (!currentStudentId) {
             tbody.innerHTML = "<tr><td colspan='7' style='text-align:center; color:var(--warning); font-weight:bold;'>माहिती लोड होत आहे... कृपया २ सेकंद थांबा आणि पुन्हा या टॅबवर क्लिक करा.</td></tr>";
             return;
         }
-        
+
         try {
             const { data: resultsData, error } = await supabaseClient.from('results').select('*').eq('student_id', currentStudentId).order('created_at', { ascending: true });
             if (error) throw error; 
-            
+
             if (!resultsData || resultsData.length === 0) { 
                 tbody.innerHTML = "<tr><td colspan='7' style='text-align:center;'>तुम्ही अद्याप कोणतीही परीक्षा दिलेली नाही.</td></tr>"; 
                 return; 
@@ -643,7 +714,7 @@
 
             resultsData.reverse();
             mySavedResultsData = resultsData; 
-            
+
             const examIds = [...new Set(resultsData.map(r => r.exam_id).filter(id => id != null))];
             let examMap = {};
             if (examIds.length > 0) {
@@ -657,11 +728,11 @@
                 const maxScore = r.total_questions * 4;
                 const percentage = maxScore > 0 ? ((r.obtained_score / maxScore) * 100).toFixed(1) : 0;
                 const badge = percentage < 50 ? `<span class='badge badge-danger'>Practice Needed</span>` : `<span class='badge badge-success'>Good</span>`;
-                
+
                 const examTitle = examMap[r.exam_id] || `Exam ID: ${r.exam_id}`;
                 const attemptBadge = `<span style="background:#E5E7EB; color:#374151; padding:2px 6px; border-radius:4px; font-size:11px; margin-left:8px;">Attempt ${r.attempt_number}</span>`;
                 const dateStr = r.created_at ? `<div style="color:gray; font-size:11px; margin-top:4px;">📅 ${new Date(r.created_at).toLocaleString('en-IN')}</div>` : '';
-                
+
                 const btnHtml = r.response_data ? `<button class="btn-analysis" onclick="openAnalysis(${index})">👁️ विश्लेषण पहा</button>` : `<span style="color:gray; font-size:12px;">उपलब्ध नाही</span>`;
 
                 return `<tr>
@@ -683,7 +754,7 @@
         const result = (typeof mySavedAdminResultsData !== 'undefined' && mySavedAdminResultsData.length > 0) 
                      ? mySavedAdminResultsData[index] 
                      : mySavedResultsData[index];
-                     
+
         const data = result.response_data;
         if(!data || data.length === 0) return;
 
@@ -724,11 +795,11 @@
 
         html += `<h3 style="margin-bottom: 10px; font-size: 15px;">🔢 प्रश्नाचे स्पष्टीकरण पाहण्यासाठी खालील क्रमांकावर क्लिक करा:</h3>`;
         html += `<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; max-height: 150px; overflow-y: auto; padding: 15px; background: #E5E7EB; border-radius: 8px;">`;
-        
+
         data.forEach((q, i) => {
             let bgColor = "#D1D5DB"; 
             let textColor = "#374151";
-            
+
             if(q.student_ans === q.correct_ans) {
                 bgColor = "var(--success)"; textColor = "white"; 
             } else if(q.student_ans) {
@@ -748,7 +819,7 @@
 
         document.getElementById('analysis-body').innerHTML = html;
         document.getElementById('analysis-modal').style.display = 'flex';
-        
+
         showQuestionDetail(0);
     }
 
@@ -758,7 +829,7 @@
 
         let statusBadge = "";
         let borderColor = "";
-        
+
         if(q.student_ans === q.correct_ans) {
             statusBadge = `<span class="badge badge-success" style="font-size:14px;">बरोबर (+4)</span>`; borderColor = "var(--success)";
         } else if (q.student_ans) {
@@ -779,9 +850,9 @@
 
         let rawQTextAnalysis = q.question || q.Question;
         let formattedQTextAnalysis = formatQuestionText(rawQTextAnalysis);
-        
+
         let questionTextHtml = `<p style="font-size:17px; margin-bottom:20px; font-weight: 600; color:#111827; line-height:1.6;">${formattedQTextAnalysis}</p>`;
-        
+
         if (q.Column_I && Array.isArray(q.Column_I)) {
             let tableRows = "";
             const maxLength = Math.max(q.Column_I.length, q.Column_II.length);
@@ -833,7 +904,7 @@
                     <div>खरे अचूक उत्तर: <strong style="color:var(--success);">${q.correct_ans})</strong></div>
                 </div>
         `;
-        
+
         if(q.student_ans !== q.correct_ans && q.explanation) {
             detailHtml += `
                 <div style="background: #FEF3C7; padding: 15px; border-radius: 8px; border-left: 4px solid var(--warning);">
