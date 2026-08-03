@@ -10,7 +10,7 @@
     <!-- KaTeX CSS & JS (Math Formulas साठी) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}]});"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true}]});"></script>
 
     <!-- SmilesDrawer JS (Chemistry Structures साठी) -->
     <script src="https://unpkg.com/smiles-drawer@1.0.10/dist/smiles-drawer.min.js"></script>
@@ -65,7 +65,7 @@
         .exam-main { flex: 3; display: flex; flex-direction: column; padding: 20px; overflow: hidden; }
         .question-panel { background: white; padding: 25px 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; flex-direction: column; height: 100%; overflow: hidden; }
 
-        /* नवीन विषय टॅब्स (Subject Sections) डिझाईन */
+        /* विषय टॅब्स (Subject Sections) डिझाईन */
         .subj-tab { padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 14px; border: 1px solid var(--border); background: white; color: var(--text-muted); transition: 0.2s; white-space: nowrap; margin-right: 8px;}
         .subj-tab.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2); }
 
@@ -109,73 +109,21 @@
 
         /* 📱 मोबाईल व्ह्यू (Mobile Responsiveness) साठी खास डिझाईन */
         @media (max-width: 768px) {
-            body { 
-                overflow-y: auto; /* मोबाईलवर पेज स्क्रोल होऊ देणे */
-                height: auto;
-            }
-            .exam-layout { 
-                flex-direction: column; /* लेआउट एकाखाली एक करणे */
-                height: auto; 
-                overflow: visible;
-            }
-            .exam-main { 
-                flex: none; 
-                width: 100%; 
-                padding: 10px; 
-            }
-            .question-panel { 
-                padding: 15px; 
-                height: auto;
-            }
-            #single-question-container { 
-                overflow-y: visible; /* प्रश्नाला स्क्रोल न लावता पूर्ण दाखवणे */
-            }
-            .exam-sidebar { 
-                flex: none; 
-                width: 100%; 
-                min-width: 100%; 
-                max-width: 100%; 
-                border-left: none; 
-                border-top: 2px solid var(--border); /* पॅलेटच्या वर बॉर्डर */
-            }
-            .navbar { 
-                flex-direction: column; 
-                padding: 15px; 
-                text-align: center; 
-                gap: 10px; 
-            }
-            .navbar div { 
-                flex-direction: column; 
-                width: 100%; 
-                gap: 10px; 
-            }
-            .user-info { 
-                margin: 0; 
-                width: 100%; 
-                font-size: 13px;
-            }
-            .logout-btn { 
-                width: 100%; 
-            }
-            .nav-buttons { 
-                flex-wrap: wrap; 
-                gap: 10px; 
-            }
-            .btn-nav { 
-                flex: 1; 
-                min-width: 45%; 
-                padding: 10px; 
-                font-size: 14px; 
-            }
-            .palette-grid { 
-                grid-template-columns: repeat(6, 1fr); /* मोबाईलवर ६ नंबर्स एका ओळीत */
-            }
-            table { 
-                font-size: 12px; 
-            }
-            th, td { 
-                padding: 8px; 
-            }
+            body { overflow-y: auto; height: auto; }
+            .exam-layout { flex-direction: column; height: auto; overflow: visible; }
+            .exam-main { flex: none; width: 100%; padding: 10px; }
+            .question-panel { padding: 15px; height: auto; }
+            #single-question-container { overflow-y: visible; }
+            .exam-sidebar { flex: none; width: 100%; min-width: 100%; max-width: 100%; border-left: none; border-top: 2px solid var(--border); }
+            .navbar { flex-direction: column; padding: 15px; text-align: center; gap: 10px; }
+            .navbar div { flex-direction: column; width: 100%; gap: 10px; }
+            .user-info { margin: 0; width: 100%; font-size: 13px; }
+            .logout-btn { width: 100%; }
+            .nav-buttons { flex-wrap: wrap; gap: 10px; }
+            .btn-nav { flex: 1; min-width: 45%; padding: 10px; font-size: 14px; }
+            .palette-grid { grid-template-columns: repeat(6, 1fr); }
+            table { font-size: 12px; }
+            th, td { padding: 8px; }
         }
     </style>
 </head>
@@ -236,7 +184,7 @@
             <div class="exam-main">
                 <div class="question-panel">
 
-                    <!-- नवीन: विषय निवडण्याचे टॅब्स -->
+                    <!-- विषय निवडण्याचे टॅब्स -->
                     <div id="subject-tabs-container" style="display: flex; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border); overflow-x: auto;"></div>
 
                     <div class="q-header">
@@ -293,14 +241,11 @@
     let examQuestions = [];
     let timerInterval = null;
 
-    // Global variable for Analysis
     let mySavedResultsData = []; 
-
     let currentQuestionIndex = 0;
     let studentResponses = {}; 
     let questionStatuses = []; 
 
-    // --- प्रश्नांचा फॉरमॅट नीट करण्यासाठी स्मार्ट फंक्शन ---
     function formatQuestionText(text) {
         if (!text) return "";
         let formatted = text.replace(/\n/g, "<br>");
@@ -341,7 +286,6 @@
    async function fetchAvailableExams() {
         const now = new Date();
 
-        // १. सर्व परीक्षा डेटाबेसमधून आणा (नवीन परीक्षा सर्वात वर)
         const { data: allExams } = await supabaseClient
             .from('exams')
             .select('*')
@@ -353,13 +297,11 @@
             return; 
         }
 
-        // २. विद्यार्थ्याचे जुने निकाल तपासा
         const { data: pastResults } = await supabaseClient
             .from('results')
             .select('exam_id')
             .eq('student_id', currentStudentId);
 
-        // ३. कोणत्या परीक्षेचे किती Attempts झाले ते मोजा
         const attemptCounts = {};
         if (pastResults) {
             pastResults.forEach(r => {
@@ -367,22 +309,16 @@
             });
         }
 
-        // --- नवीन लॉजिक: फक्त शेवटची (Latest) परीक्षा Re-exam साठी दाखवणे ---
-        const latestExamId = allExams[0].id; // यादीतील पहिली परीक्षा (सर्वात नवीन)
+        const latestExamId = allExams[0].id; 
 
         const examsToShow = allExams.filter(e => {
             const attempts = attemptCounts[e.id] || 0;
             const isExpired = new Date(e.valid_until) < now;
 
             if (isExpired) {
-                // जर परीक्षा Expire झाली असेल आणि ती सर्वात नवीन (Last) परीक्षा नसेल, तर ती पूर्णपणे लपवा
                 if (e.id !== latestExamId) return false;
-
-                // जर ती सर्वात नवीन (Last) परीक्षा असेल, पण विद्यार्थ्याने ती एकदाही दिली नसेल (Attempt 0), तर लपवा
                 if (attempts === 0) return false;
             }
-
-            // बाकी सर्व केसेसमध्ये (Active परीक्षा किंवा Latest परीक्षेचा Re-exam) परीक्षा दाखवा
             return true;
         });
 
@@ -391,7 +327,6 @@
             return;
         }
 
-        // ४. विद्यार्थ्याला परीक्षा दाखवणे
         tbody.innerHTML = examsToShow.map(e => {
             const attempts = attemptCounts[e.id] || 0;
             const isExpired = new Date(e.valid_until) < now;
@@ -438,6 +373,8 @@
             `;
         }).join('');
     }
+
+    // --- Advanced No-Repetition & Equal Distribution Logic ---
     async function startExam(examId) {
         const { data: examInfo } = await supabaseClient.from('exams').select('*').eq('id', examId).single();
         if(!examInfo) return;
@@ -447,24 +384,82 @@
         document.getElementById('exam-interface').classList.remove('hidden');
         document.getElementById('main-container').classList.add('hidden');
 
-        const { data: questions } = await supabaseClient
-            .from(TABLE_NAME)
-            .select('*')
-            .in('Question ID', examInfo.selected_question_ids);
+        // १. विद्यार्थ्याने भूतकाळात बरोबर सोडवलेले प्रश्न शोधणे
+        const { data: pastResults } = await supabaseClient.from('results').select('response_data').eq('student_id', currentStudentId);
+        let correctlyAnsweredIds = new Set();
+        
+        if (pastResults) {
+            pastResults.forEach(res => {
+                if (res.response_data) {
+                    res.response_data.forEach(qData => {
+                        if (qData.student_ans && qData.student_ans === qData.correct_ans && qData.question_id) {
+                            correctlyAnsweredIds.add(qData.question_id);
+                        }
+                    });
+                }
+            });
+        }
 
-        // --- नवीन: प्रश्नांची विषयानुसार गटवारी करणे (Group by Subject) ---
-        const groupedQuestions = {};
-        questions.forEach(q => {
-            const subj = q['Subject'] || q['subject'] || "General";
-            if (!groupedQuestions[subj]) groupedQuestions[subj] = [];
-            groupedQuestions[subj].push(q);
+        // २. बरोबर आलेले प्रश्न वगळून उरलेले प्रश्न काढणे
+        let poolIds = examInfo.selected_question_ids || [];
+        let availableIds = poolIds.filter(id => !correctlyAnsweredIds.has(id));
+
+        if (availableIds.length === 0) {
+            alert("अभिनंदन! या टॉपिकचे सर्व उपलब्ध प्रश्न तुम्ही आधीच बरोबर सोडवले आहेत. नवीन प्रश्न शिल्लक नाहीत.");
+            window.location.reload();
+            return;
+        }
+
+        // ३. URL Limit टाळण्यासाठी Chunks मध्ये प्रश्न आणणे
+        let poolQuestions = [];
+        const chunkSize = 150; 
+        for (let i = 0; i < availableIds.length; i += chunkSize) {
+            const chunk = availableIds.slice(i, i + chunkSize);
+            const { data } = await supabaseClient.from(TABLE_NAME).select('*').in('Question ID', chunk);
+            if (data) poolQuestions.push(...data);
+        }
+
+        // ४. समान वाटप (Round-Robin लॉजिक)
+        const colSubj = poolQuestions[0]?.hasOwnProperty('Subject') ? 'Subject' : 'subject';
+        const questionsBySubject = {};
+        
+        poolQuestions.forEach(q => {
+            const subj = q[colSubj] || "General";
+            if (!questionsBySubject[subj]) questionsBySubject[subj] = [];
+            questionsBySubject[subj].push(q);
         });
 
-        examQuestions = [];
-        const sortedSubjects = Object.keys(groupedQuestions).sort();
-        sortedSubjects.forEach(subj => {
-            groupedQuestions[subj].sort(() => 0.5 - Math.random());
-            examQuestions.push(...groupedQuestions[subj]);
+        let finalSelectedQs = [];
+        let needed = examInfo.total_questions;
+        const uniqueSubjects = Object.keys(questionsBySubject).sort();
+        
+        let availablePerSubj = {};
+        uniqueSubjects.forEach(s => {
+            availablePerSubj[s] = questionsBySubject[s].sort(() => 0.5 - Math.random());
+        });
+
+        let activeSubjects = [...uniqueSubjects];
+        while (needed > 0 && activeSubjects.length > 0) {
+            for (let i = 0; i < activeSubjects.length; i++) {
+                if (needed === 0) break;
+                const subj = activeSubjects[i];
+                if (availablePerSubj[subj].length > 0) {
+                    finalSelectedQs.push(availablePerSubj[subj].pop());
+                    needed--;
+                }
+            }
+            activeSubjects = activeSubjects.filter(subj => availablePerSubj[subj].length > 0);
+        }
+
+        if (finalSelectedQs.length < examInfo.total_questions) {
+            alert(`सूचना: तुम्ही बरेच प्रश्न आधीच बरोबर सोडवले आहेत, त्यामुळे सराव करण्यासाठी तुम्हाला नवीन ${finalSelectedQs.length} प्रश्न मिळत आहेत.`);
+        }
+
+        // ५. टॅब्स आणि पॅलेटसाठी प्रश्नांना विषयानुसार सॉर्ट करणे
+        examQuestions = finalSelectedQs.sort((a, b) => {
+            const subjA = a[colSubj] || "General";
+            const subjB = b[colSubj] || "General";
+            return subjA.localeCompare(subjB);
         });
 
         currentQuestionIndex = 0;
@@ -473,7 +468,7 @@
         questionStatuses[0] = 'not-answered';
 
         renderExamScreen();
-        startTimer(examInfo.total_questions * 60); 
+        startTimer(examQuestions.length * 60); 
     }
 
     function renderExamScreen() {
@@ -482,7 +477,7 @@
         const isCap = q.hasOwnProperty('Option A');
         const currentSubj = q['Subject'] || q['subject'] || "General";
 
-        // --- 1. विषय टॅब्स (Subject Tabs) तयार करणे ---
+        // 1. विषय टॅब्स तयार करणे
         let tabsHtml = "";
         const uniqueSubjects = [];
         examQuestions.forEach((qObj, idx) => {
@@ -495,7 +490,7 @@
         });
         document.getElementById('subject-tabs-container').innerHTML = tabsHtml;
 
-        // --- 2. Palette मध्ये विषयानुसार गट करणे ---
+        // 2. Palette मध्ये विषयानुसार गट करणे
         const pal = document.getElementById('palette-container');
         pal.className = ""; 
         let paletteHtml = "";
@@ -514,7 +509,7 @@
         if(paletteHtml !== "") paletteHtml += `</div>`;
         pal.innerHTML = paletteHtml;
 
-        // --- 3. SMILES Structure Logic ---
+        // 3. SMILES Structure Logic (Fixed Size Bug)
         const smilesCode = q['Smiles'] || q['question_smiles'] || q['SMILES'] || null;
         let structureHtml = "";
         if (smilesCode) {
@@ -524,8 +519,8 @@
                 </div>
             `;
         }
-        
-        // --- प्रश्नाला फॉरमॅट लावणे ---
+
+        // 4. प्रश्नाला फॉरमॅट लावणे
         let rawQText = isCap ? q['Question'] : q['question'];
         const qText = formatQuestionText(rawQText);
 
@@ -571,9 +566,8 @@
             </div>
         `;
 
-       if (smilesCode) {
+        if (smilesCode) {
             try {
-                // fontSizeLarge काढले आहे जेणेकरून फॉन्ट आपोआप सेट होईल आणि padding टाकले आहे.
                 let options = { width: 300, height: 200, padding: 15 };
                 let smilesDrawer = new SmilesDrawer.Drawer(options);
                 SmilesDrawer.parse(smilesCode, function(tree) {
@@ -583,6 +577,7 @@
                 console.error("Structure Draw Error:", err);
             }
         }
+
         if (typeof renderMathInElement === 'function') {
             renderMathInElement(document.getElementById('single-question-container'), {
                 delimiters: [
@@ -632,7 +627,7 @@
         examQuestions.forEach((q, index) => {
             const ansRaw = isCap ? q['Correct Option'] : q['correct option'] || q['correct_option'];
 
-            // --- O येण्याचा प्रॉब्लेम सोडवण्यासाठी फिक्स ---
+            // O येण्याचा प्रॉब्लेम सोडवण्यासाठी फिक्स
             let correctAns = "";
             if (ansRaw) {
                 let tempAns = ansRaw.toString().toUpperCase().trim();
@@ -653,6 +648,7 @@
             else wrong++;
 
             detailedAnalysisArray.push({
+                question_id: q['Question ID'] || q['question_id'], // No repetition logic साठी आयडी सेव्ह करणे
                 question: isCap ? q['Question'] : q['question'],
                 Smiles: smilesCode,
                 Column_I: col1,
@@ -675,7 +671,7 @@
             await supabaseClient.from('results').insert([{
                 student_id: currentStudentId,
                 exam_id: currentExamData.id,
-                total_questions: currentExamData.total_questions,
+                total_questions: examQuestions.length,
                 correct_answers: correct,
                 wrong_answers: wrong,
                 unattempted: unattempted,
@@ -683,7 +679,7 @@
                 response_data: detailedAnalysisArray 
             }]);
 
-            alert(`परीक्षा पूर्ण झाली!\nगुण: ${obtainedScore} / ${currentExamData.total_questions * 4}`);
+            alert(`परीक्षा पूर्ण झाली!\nगुण: ${obtainedScore} / ${examQuestions.length * 4}`);
             window.location.reload();
         } catch(err) { alert("अडचण: " + err.message); window.location.reload(); }
     }
@@ -725,7 +721,8 @@
             tbody.innerHTML = resultsData.map((r, index) => {
                 const correct = r.correct_answers || 0;
                 const wrong = r.wrong_answers || 0;
-                const maxScore = r.total_questions * 4;
+                const totalQs = r.total_questions || (correct + wrong + (r.unattempted || 0));
+                const maxScore = totalQs * 4;
                 const percentage = maxScore > 0 ? ((r.obtained_score / maxScore) * 100).toFixed(1) : 0;
                 const badge = percentage < 50 ? `<span class='badge badge-danger'>Practice Needed</span>` : `<span class='badge badge-success'>Good</span>`;
 
@@ -842,8 +839,8 @@
         let structureHtml = "";
         if (smilesCode) {
             structureHtml = `
-                <div style="margin-bottom: 20px; text-align: center; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
-                    <canvas id="analysis-chem-canvas-${index}" width="300" height="200"></canvas>
+                <div style="margin-bottom: 20px; text-align: center; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid var(--border); overflow: hidden;">
+                    <canvas id="analysis-chem-canvas-${index}" width="300" height="200" style="max-width: 100%; height: auto;"></canvas>
                 </div>
             `;
         }
@@ -919,7 +916,7 @@
 
         if (smilesCode) {
             try {
-                let options = { width: 300, height: 200, bondThickness: 1.5, fontSizeLarge: 14 };
+                let options = { width: 300, height: 200, padding: 15 };
                 let smilesDrawer = new SmilesDrawer.Drawer(options);
                 SmilesDrawer.parse(smilesCode, function(tree) {
                     smilesDrawer.draw(tree, `analysis-chem-canvas-${index}`, 'light', false);
