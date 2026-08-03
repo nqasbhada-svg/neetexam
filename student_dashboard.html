@@ -519,12 +519,12 @@
         let structureHtml = "";
         if (smilesCode) {
             structureHtml = `
-                <div style="margin-bottom: 20px; text-align: center; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
-                    <canvas id="chem-canvas-${currentQuestionIndex}" width="300" height="200"></canvas>
+                <div style="margin-bottom: 20px; text-align: center; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid var(--border); overflow: hidden;">
+                    <canvas id="chem-canvas-${currentQuestionIndex}" width="300" height="200" style="max-width: 100%; height: auto;"></canvas>
                 </div>
             `;
         }
-
+        
         // --- प्रश्नाला फॉरमॅट लावणे ---
         let rawQText = isCap ? q['Question'] : q['question'];
         const qText = formatQuestionText(rawQText);
@@ -571,9 +571,10 @@
             </div>
         `;
 
-        if (smilesCode) {
+       if (smilesCode) {
             try {
-                let options = { width: 300, height: 200, bondThickness: 1.5, fontSizeLarge: 14 };
+                // fontSizeLarge काढले आहे जेणेकरून फॉन्ट आपोआप सेट होईल आणि padding टाकले आहे.
+                let options = { width: 300, height: 200, padding: 15 };
                 let smilesDrawer = new SmilesDrawer.Drawer(options);
                 SmilesDrawer.parse(smilesCode, function(tree) {
                     smilesDrawer.draw(tree, `chem-canvas-${currentQuestionIndex}`, 'light', false);
@@ -582,7 +583,6 @@
                 console.error("Structure Draw Error:", err);
             }
         }
-
         if (typeof renderMathInElement === 'function') {
             renderMathInElement(document.getElementById('single-question-container'), {
                 delimiters: [
