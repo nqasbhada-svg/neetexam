@@ -258,7 +258,17 @@
         formatted = formatted.replace(/^(<br>\s*)+/, "");
         return formatted;
     }
-
+// --- चुकीचा किंवा रिकामा SMILES डेटा फिल्टर करण्यासाठी स्मार्ट फंक्शन ---
+    function getValidSmiles(q) {
+        let s = q['Smiles'] || q['question_smiles'] || q['SMILES'] || null;
+        if (!s) return null;
+        s = s.toString().trim();
+        // जर डेटाबेसमध्ये NA, -, None किंवा फक्त स्पेस असेल, तर null पाठवा
+        if (s === '' || s === '-' || s.toLowerCase() === 'na' || s.toLowerCase() === 'none' || s.toLowerCase() === 'null') {
+            return null;
+        }
+        return s;
+    }
     function openTab(tabId) {
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -509,17 +519,17 @@
         if(paletteHtml !== "") paletteHtml += `</div>`;
         pal.innerHTML = paletteHtml;
 
-        // 3. SMILES Structure Logic (Fixed Size Bug)
-        const smilesCode = q['Smiles'] || q['question_smiles'] || q['SMILES'] || null;
+        // --- 3. SMILES Structure Logic (Fixed Size & Blank Box Bug) ---
+        const smilesCode = getValidSmiles(q);
         let structureHtml = "";
         if (smilesCode) {
+            // कॅनव्हासची रुंदी (width) 500 केली आहे जेणेकरून लांब आकृत्या कापल्या जाणार नाहीत
             structureHtml = `
-                <div style="margin-bottom: 20px; text-align: center; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid var(--border); overflow: hidden;">
-                    <canvas id="chem-canvas-${currentQuestionIndex}" width="300" height="200" style="max-width: 100%; height: auto;"></canvas>
+                <div id="smiles-wrapper-${currentQuestionIndex}" style="margin-bottom: 20px; text-align: center; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid var(--border); overflow: hidden;">
+                    <canvas id="chem-canvas-${currentQuestionIndex}" width="500" height="200" style="max-width: 100%; height: auto;"></canvas>
                 </div>
             `;
         }
-
         // 4. प्रश्नाला फॉरमॅट लावणे
         let rawQText = isCap ? q['Question'] : q['question'];
         const qText = formatQuestionText(rawQText);
@@ -568,16 +578,22 @@
 
         if (smilesCode) {
             try {
-                let options = { width: 300, height: 200, padding: 15 };
+                // padding 30 केल्यामुळे आकृती कडेला चिकटणार नाही
+                let options = { width: 500, height: 200, padding: 30 };
                 let smilesDrawer = new SmilesDrawer.Drawer(options);
                 SmilesDrawer.parse(smilesCode, function(tree) {
                     smilesDrawer.draw(tree, `chem-canvas-${currentQuestionIndex}`, 'light', false);
+                }, function(err) {
+                    // जर SMILES चुकून चुकीचा (Invalid) असेल, तर पांढरी चौकट लपवून टाका
+                    const wrapper = document.getElementById(`smiles-wrapper-${currentQuestionIndex}`);
+                    if (wrapper) wrapper.style.display = 'none';
                 });
             } catch (err) {
                 console.error("Structure Draw Error:", err);
+                const wrapper = document.getElementById(`smiles-wrapper-${currentQuestionIndex}`);
+                if (wrapper) wrapper.style.display = 'none';
             }
         }
-
         if (typeof renderMathInElement === 'function') {
             renderMathInElement(document.getElementById('single-question-container'), {
                 delimiters: [
