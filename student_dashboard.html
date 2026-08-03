@@ -258,7 +258,8 @@
         formatted = formatted.replace(/^(<br>\s*)+/, "");
         return formatted;
     }
-// --- चुकीचा किंवा रिकामा SMILES डेटा फिल्टर करण्यासाठी स्मार्ट फंक्शन ---
+
+    // --- चुकीचा किंवा रिकामा SMILES डेटा फिल्टर करण्यासाठी स्मार्ट फंक्शन ---
     function getValidSmiles(q) {
         let s = q['Smiles'] || q['question_smiles'] || q['SMILES'] || null;
         if (!s) return null;
@@ -269,6 +270,7 @@
         }
         return s;
     }
+
     function openTab(tabId) {
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -523,13 +525,13 @@
         const smilesCode = getValidSmiles(q);
         let structureHtml = "";
         if (smilesCode) {
-            // कॅनव्हासची रुंदी (width) 500 केली आहे जेणेकरून लांब आकृत्या कापल्या जाणार नाहीत
             structureHtml = `
                 <div id="smiles-wrapper-${currentQuestionIndex}" style="margin-bottom: 20px; text-align: center; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid var(--border); overflow: hidden;">
                     <canvas id="chem-canvas-${currentQuestionIndex}" width="500" height="200" style="max-width: 100%; height: auto;"></canvas>
                 </div>
             `;
         }
+
         // 4. प्रश्नाला फॉरमॅट लावणे
         let rawQText = isCap ? q['Question'] : q['question'];
         const qText = formatQuestionText(rawQText);
@@ -578,13 +580,11 @@
 
         if (smilesCode) {
             try {
-                // padding 30 केल्यामुळे आकृती कडेला चिकटणार नाही
                 let options = { width: 500, height: 200, padding: 30 };
                 let smilesDrawer = new SmilesDrawer.Drawer(options);
                 SmilesDrawer.parse(smilesCode, function(tree) {
                     smilesDrawer.draw(tree, `chem-canvas-${currentQuestionIndex}`, 'light', false);
                 }, function(err) {
-                    // जर SMILES चुकून चुकीचा (Invalid) असेल, तर पांढरी चौकट लपवून टाका
                     const wrapper = document.getElementById(`smiles-wrapper-${currentQuestionIndex}`);
                     if (wrapper) wrapper.style.display = 'none';
                 });
@@ -594,6 +594,7 @@
                 if (wrapper) wrapper.style.display = 'none';
             }
         }
+
         if (typeof renderMathInElement === 'function') {
             renderMathInElement(document.getElementById('single-question-container'), {
                 delimiters: [
@@ -643,7 +644,6 @@
         examQuestions.forEach((q, index) => {
             const ansRaw = isCap ? q['Correct Option'] : q['correct option'] || q['correct_option'];
 
-            // O येण्याचा प्रॉब्लेम सोडवण्यासाठी फिक्स
             let correctAns = "";
             if (ansRaw) {
                 let tempAns = ansRaw.toString().toUpperCase().trim();
@@ -664,7 +664,7 @@
             else wrong++;
 
             detailedAnalysisArray.push({
-                question_id: q['Question ID'] || q['question_id'], // No repetition logic साठी आयडी सेव्ह करणे
+                question_id: q['Question ID'] || q['question_id'], 
                 question: isCap ? q['Question'] : q['question'],
                 Smiles: smilesCode,
                 Column_I: col1,
@@ -851,12 +851,12 @@
             statusBadge = `<span class="badge" style="background:#E5E7EB; color:#374151; font-size:14px;">सोडवला नाही (0)</span>`; borderColor = "#9CA3AF";
         }
 
-        const smilesCode = q.Smiles || q.question_smiles || null;
+        const smilesCode = getValidSmiles(q);
         let structureHtml = "";
         if (smilesCode) {
             structureHtml = `
-                <div style="margin-bottom: 20px; text-align: center; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid var(--border); overflow: hidden;">
-                    <canvas id="analysis-chem-canvas-${index}" width="300" height="200" style="max-width: 100%; height: auto;"></canvas>
+                <div id="analysis-smiles-wrapper-${index}" style="margin-bottom: 20px; text-align: center; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid var(--border); overflow: hidden;">
+                    <canvas id="analysis-chem-canvas-${index}" width="500" height="200" style="max-width: 100%; height: auto;"></canvas>
                 </div>
             `;
         }
@@ -932,13 +932,18 @@
 
         if (smilesCode) {
             try {
-                let options = { width: 300, height: 200, padding: 15 };
+                let options = { width: 500, height: 200, padding: 30 };
                 let smilesDrawer = new SmilesDrawer.Drawer(options);
                 SmilesDrawer.parse(smilesCode, function(tree) {
                     smilesDrawer.draw(tree, `analysis-chem-canvas-${index}`, 'light', false);
+                }, function(err) {
+                    const wrapper = document.getElementById(`analysis-smiles-wrapper-${index}`);
+                    if(wrapper) wrapper.style.display = 'none';
                 });
             } catch (err) {
                 console.error("Analysis Structure Draw Error:", err);
+                const wrapper = document.getElementById(`analysis-smiles-wrapper-${index}`);
+                if(wrapper) wrapper.style.display = 'none';
             }
         }
 
